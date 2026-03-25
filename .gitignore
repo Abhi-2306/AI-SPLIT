@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment variables (contains API keys)
+.env
+.env.local
+.env*.local
+
+# Tesseract trained data (large binary)
+*.traineddata
+
+# Test receipt files
+*.pdf
+*.jpeg
+*.jpg
+*.png
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+
+# Claude local files
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
