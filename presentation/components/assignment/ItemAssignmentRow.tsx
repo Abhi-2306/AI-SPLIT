@@ -18,6 +18,20 @@ type ItemAssignmentRowProps = {
   currency: string;
 };
 
+/**
+ * Extracts a sub-unit count from an item name descriptor.
+ * e.g. "Coke 35 Count" → 35, "Eggs 5 Dozen" → 60, "Water 12 Pk" → 12
+ */
+function extractSubCount(name: string): number | null {
+  const dozenMatch = name.match(/(\d+(?:\.\d+)?)\s*dozen/i);
+  if (dozenMatch) return Math.round(parseFloat(dozenMatch[1]) * 12);
+
+  const countMatch = name.match(/(\d+)\s*[-]?\s*(?:count|ct|pack|pk|pcs?|pieces?)/i);
+  if (countMatch) return parseInt(countMatch[1], 10);
+
+  return null;
+}
+
 const MODE_LABELS: Record<SplitMode, string> = {
   equally: "Equally",
   by_count: "By Count",
@@ -31,9 +45,9 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
   const { setItemSplitConfig, assignUnit, unassignUnit, currentBill } = useBillStore();
   const { addToast } = useUiStore();
 
-  // Default to "per_unit" if no existing splitConfig
+  // Default to "per_unit" for multi-unit items, "equally" for single-unit items
   const initialMode: SplitMode =
-    (item.splitConfig?.mode as SplitMode | undefined) ?? "per_unit";
+    (item.splitConfig?.mode as SplitMode | undefined) ?? (item.quantity > 1 ? "per_unit" : "equally");
 
   const [mode, setMode] = useState<SplitMode>(initialMode);
 
@@ -149,6 +163,7 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
   // Validation helpers
   const percentSum = entries.reduce((s, e) => s + (e.value || 0), 0);
   const countSum = entries.reduce((s, e) => s + (e.value || 0), 0);
+  const subCount = extractSubCount(item.name) ?? item.quantity;
 
   return (
     <div className="py-4 border-b border-slate-100 dark:border-slate-700 last:border-0">
@@ -167,9 +182,10 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
             onChange={(e) => handleModeChange(e.target.value as SplitMode)}
             className="text-xs border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {Object.entries(MODE_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
-            ))}
+            {Object.entries(MODE_LABELS).map(([val, label]) => {
+              if (val === "per_unit" && item.quantity <= 1) return null;
+              return <option key={val} value={val}>{label}</option>;
+            })}
           </select>
         </div>
       </div>
@@ -193,6 +209,11 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
               </button>
             );
           })}
+          {item.quantity === 1 && (
+            <p className="w-full text-xs text-slate-400 mt-1">
+              Need to split by units consumed? Switch to <strong>By Count</strong> mode.
+            </p>
+          )}
         </div>
       )}
 
@@ -202,7 +223,7 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
             const entry = entries.find((e) => e.participantId === p.id)!;
             const placeholder =
               mode === "by_percentage" ? "%" :
-              mode === "by_count" ? `of ${item.quantity}` :
+              mode === "by_count" ? `of ${subCount}` :
               mode === "by_shares" ? "shares" : currency;
             return (
               <div key={p.id} className="flex items-center gap-3">
@@ -237,8 +258,8 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
             </p>
           )}
           {mode === "by_count" && (
-            <p className={`text-xs ml-9 ${countSum > item.quantity ? "text-red-500" : "text-slate-400"}`}>
-              {countSum} / {item.quantity} assigned
+            <p className={`text-xs ml-9 ${countSum > subCount ? "text-red-500" : "text-slate-400"}`}>
+              {countSum} / {subCount} assigned
             </p>
           )}
           {mode === "by_amount" && (

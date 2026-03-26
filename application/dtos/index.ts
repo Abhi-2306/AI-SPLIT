@@ -55,6 +55,7 @@ export type OcrResultDto = {
   parsedItems: ParsedItemDto[];
   detectedCurrency: string | null;
   detectedTax: number | null;
+  detectedDiscount: number | null;
   detectedTip: number | null;
   detectedTotal: number | null;
 };

@@ -21,6 +21,7 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
     () => ocrResult?.parsedItems.map((item) => ({ ...item, selected: true })) ?? []
   );
   const [applyTax, setApplyTax] = useState(true);
+  const [applyDiscount, setApplyDiscount] = useState(true);
   const [applyTip, setApplyTip] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -45,8 +46,13 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
           unitPrice: item.unitPrice,
         });
       }
-      // Auto-apply detected tax and/or tip if checked
-      const taxToApply = applyTax && ocrResult!.detectedTax !== null ? ocrResult!.detectedTax : undefined;
+      // Auto-apply detected tax/fees (minus discount) and/or tip if checked
+      let taxToApply: number | undefined;
+      if (applyTax && ocrResult!.detectedTax !== null) {
+        const gross = ocrResult!.detectedTax;
+        const disc = applyDiscount && ocrResult!.detectedDiscount !== null ? ocrResult!.detectedDiscount : 0;
+        taxToApply = Math.max(0, gross - disc);
+      }
       const tipToApply = applyTip && ocrResult!.detectedTip !== null ? ocrResult!.detectedTip : undefined;
       if (taxToApply !== undefined || tipToApply !== undefined) {
         await updateBillMeta(billId, {
@@ -68,7 +74,11 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
     c === "high" ? "text-green-600" : c === "medium" ? "text-yellow-600" : "text-red-500";
 
   const hasTax = ocrResult.detectedTax !== null && ocrResult.detectedTax > 0;
+  const hasDiscount = ocrResult.detectedDiscount !== null && ocrResult.detectedDiscount > 0;
   const hasTip = ocrResult.detectedTip !== null && ocrResult.detectedTip > 0;
+  const netTax = hasTax
+    ? Math.max(0, ocrResult.detectedTax! - (applyDiscount && hasDiscount ? ocrResult.detectedDiscount! : 0))
+    : 0;
 
   return (
     <div className="mt-4 border border-blue-200 rounded-xl bg-blue-50 dark:bg-blue-950 dark:border-blue-800 p-4">
@@ -134,8 +144,8 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
         </div>
       )}
 
-      {/* Detected tax / tip auto-apply checkboxes */}
-      {(hasTax || hasTip) && (
+      {/* Detected tax / discount / tip auto-apply checkboxes */}
+      {(hasTax || hasDiscount || hasTip) && (
         <div className="mt-3 flex flex-col gap-1.5 border-t border-blue-200 dark:border-blue-700 pt-3">
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Detected charges:</p>
           {hasTax && (
@@ -146,8 +156,24 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
                 onChange={(e) => setApplyTax(e.target.checked)}
                 className="accent-blue-600 w-4 h-4"
               />
-              Apply tax / service charge: <span className="font-semibold">{ocrResult.detectedTax}</span>
+              Fees / tax: <span className="font-semibold">+{ocrResult.detectedTax?.toFixed(2)}</span>
             </label>
+          )}
+          {hasDiscount && (
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={applyDiscount}
+                onChange={(e) => setApplyDiscount(e.target.checked)}
+                className="accent-green-600 w-4 h-4"
+              />
+              Discount: <span className="font-semibold text-green-600">−{ocrResult.detectedDiscount?.toFixed(2)}</span>
+            </label>
+          )}
+          {hasTax && hasDiscount && (
+            <p className="text-xs text-slate-500 ml-6">
+              Net applied: <span className="font-semibold text-slate-700 dark:text-slate-300">{netTax.toFixed(2)}</span>
+            </p>
           )}
           {hasTip && (
             <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
@@ -157,7 +183,7 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
                 onChange={(e) => setApplyTip(e.target.checked)}
                 className="accent-blue-600 w-4 h-4"
               />
-              Apply tip / gratuity: <span className="font-semibold">{ocrResult.detectedTip}</span>
+              Tip / gratuity: <span className="font-semibold">+{ocrResult.detectedTip?.toFixed(2)}</span>
             </label>
           )}
         </div>

@@ -9,7 +9,7 @@ export const SUPPORTED_CURRENCIES = [
   { code: "JPY", label: "JPY - Japanese Yen (¥)" },
 ];
 
-export const DEFAULT_CURRENCY = "INR";
+export const DEFAULT_CURRENCY = "USD";
 
 export const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 

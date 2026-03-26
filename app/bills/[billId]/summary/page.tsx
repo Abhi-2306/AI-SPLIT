@@ -43,7 +43,7 @@ export default function SummaryPage({ params }: Params) {
         <div className="flex gap-2">
           <Button
             variant="secondary"
-            onClick={() => router.back()}
+            onClick={() => router.push(ROUTES.bill(billId) + "?step=3")}
           >
             ← Back
           </Button>

@@ -29,6 +29,13 @@ export default function BillPage({ params }: Params) {
   const { addToast } = useUiStore();
   const [step, setStep] = useState(1);
   const [loadError, setLoadError] = useState(false);
+
+  // Read ?step= from URL on mount (e.g. when navigating back from summary)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const s = parseInt(params.get("step") ?? "");
+    if (s >= 1 && s <= 3) setStep(s);
+  }, []);
   const [savingMeta, setSavingMeta] = useState(false);
 
   useEffect(() => {

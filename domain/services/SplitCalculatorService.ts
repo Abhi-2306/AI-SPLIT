@@ -14,9 +14,20 @@ import { createMoney, zeroMoney, addMoney } from "../value-objects/Money";
 export function calculateSplit(bill: Bill): SplitResult {
   const unassignedUnits: UnassignedUnit[] = [];
 
-  // Identify unassigned units (only relevant for items WITHOUT a splitConfig)
+  // Identify truly unassigned units.
+  // Items the user never touched default to "equally among all" — not unassigned.
   for (const item of bill.items) {
-    if (item.splitConfig !== null) continue; // split config handles this item
+    if (item.splitConfig !== null) {
+      // splitConfig present but empty entries → user cleared it, not a default → unassigned
+      if (item.splitConfig.entries.length === 0) {
+        unassignedUnits.push({ item, unitIndex: 0 });
+      }
+      continue;
+    }
+    // splitConfig === null: only flag as unassigned if SOME units are assigned but not all.
+    // If ZERO assignments exist for the item, the user never touched it → default equally, not unassigned.
+    const itemHasAnyAssignment = bill.assignments.some((a) => a.billItemId === item.id);
+    if (!itemHasAnyAssignment) continue; // will be treated as equally split below
     for (let unitIndex = 0; unitIndex < item.quantity; unitIndex++) {
       const isAssigned = bill.assignments.some(
         (a) => a.billItemId === item.id && a.unitIndex === unitIndex
@@ -24,13 +35,6 @@ export function calculateSplit(bill: Bill): SplitResult {
       if (!isAssigned) {
         unassignedUnits.push({ item, unitIndex });
       }
-    }
-  }
-
-  // Also mark items with splitConfig but no entries as unassigned
-  for (const item of bill.items) {
-    if (item.splitConfig !== null && item.splitConfig.entries.length === 0) {
-      unassignedUnits.push({ item, unitIndex: 0 });
     }
   }
 
@@ -71,21 +75,30 @@ export function calculateSplit(bill: Bill): SplitResult {
         assignedUnitIndices = [0]; // placeholder for display
       } else if (item.splitConfig === null) {
         // ── Unit-based split (legacy / Per Unit mode) ───────────────────────
-        let amountOwedTotal = 0;
+        const itemHasAnyAssignment = bill.assignments.some((a) => a.billItemId === item.id);
 
-        for (let u = 0; u < item.quantity; u++) {
-          const sharersOfUnit = bill.assignments.filter(
-            (a) => a.billItemId === item.id && a.unitIndex === u
-          );
-          const isSharer = sharersOfUnit.some((a) => a.participantId === participant.id);
-          if (!isSharer) continue;
+        if (!itemHasAnyAssignment) {
+          // User never touched this item → default: split equally among all participants
+          if (bill.participants.length === 0) continue;
+          amountOwed = createMoney(item.totalPrice.amount / bill.participants.length, bill.currency);
+          assignedUnitIndices = Array.from({ length: item.quantity }, (_, i) => i);
+        } else {
+          let amountOwedTotal = 0;
 
-          amountOwedTotal += item.unitPrice.amount / sharersOfUnit.length;
-          assignedUnitIndices.push(u);
+          for (let u = 0; u < item.quantity; u++) {
+            const sharersOfUnit = bill.assignments.filter(
+              (a) => a.billItemId === item.id && a.unitIndex === u
+            );
+            const isSharer = sharersOfUnit.some((a) => a.participantId === participant.id);
+            if (!isSharer) continue;
+
+            amountOwedTotal += item.unitPrice.amount / sharersOfUnit.length;
+            assignedUnitIndices.push(u);
+          }
+
+          if (assignedUnitIndices.length === 0) continue;
+          amountOwed = createMoney(amountOwedTotal, bill.currency);
         }
-
-        if (assignedUnitIndices.length === 0) continue;
-        amountOwed = createMoney(amountOwedTotal, bill.currency);
       } else {
         continue;
       }
