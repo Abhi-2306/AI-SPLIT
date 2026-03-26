@@ -45,9 +45,10 @@ domain ← application ← infrastructure
 - DTOs and mappers in `application/dtos/` convert between domain entities and API-safe objects.
 
 **`infrastructure/`** — Concrete implementations of ports.
-- `InMemoryBillRepository` — no database; all data lives in process memory and resets on restart.
+- `SupabaseBillRepository` — active repository; reads/writes to Supabase PostgreSQL. Uses upsert + delete-orphans pattern in `save()` to be safe under concurrent requests. Calls `createClient()` (server) inside each method so it reads the request cookies per-call — no factory pattern needed.
+- `InMemoryBillRepository` — kept for reference/tests; no longer wired in the container.
 - `GroqReceiptService` — primary OCR: sends images to `llama-4-scout-17b-16e-instruct` and PDFs (text extracted first) to `llama-3.3-70b-versatile`.
-- Swapping implementations (e.g., adding a database) means adding a new file in `infrastructure/` and changing one line in `composition-root/container.ts`.
+- Swapping implementations means adding a new file in `infrastructure/` and changing one line in `composition-root/container.ts`.
 
 **`presentation/`** — React components and Zustand stores.
 - Two stores: `billStore` (all bill state) and `uiStore` (toasts, modals).
@@ -73,3 +74,79 @@ Tax and tip are distributed proportionally based on each participant's subtotal 
 ## Testing
 
 Tests live in `tests/unit/`. Currently only `SplitCalculatorService` has tests. The vitest config uses `jsdom` environment with `@testing-library/jest-dom` matchers loaded via `tests/setup.ts`. Globals are enabled (`describe`, `it`, `expect` without imports).
+
+## Auth
+
+Supabase Auth handles sessions via `@supabase/ssr`. Two clients:
+- `lib/supabase/client.ts` — browser client (`createBrowserClient`), used in Client Components and auth forms.
+- `lib/supabase/server.ts` — async server client (`createServerClient` + `cookies()`), used in API routes and the repository.
+
+`middleware.ts` protects all page routes (excludes `/api/`, `/_next/`, `/login`, `/signup`). Unauthenticated page requests redirect to `/login`; authenticated users visiting auth pages redirect to `/`.
+
+Supported auth methods: email/password. Google OAuth is planned for Iteration 3.
+
+To create a pre-confirmed test user (no email confirmation required):
+```bash
+# Add SUPABASE_SERVICE_ROLE_KEY to .env.local first
+node scripts/create-test-user.mjs                          # test@aisplit.dev / testpass123
+node scripts/create-test-user.mjs email@example.com pass  # custom credentials
+```
+
+## Environment Variables
+
+```
+NEXT_PUBLIC_SUPABASE_URL=        # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=   # Supabase anon/public key
+SUPABASE_SERVICE_ROLE_KEY=       # Service role key (only for scripts, never exposed to browser)
+GROQ_API_KEY=                    # Groq API key for OCR
+```
+
+## Project Roadmap
+
+### ✅ Iteration 1 — Core Bill Splitting
+- Clean Architecture (domain → application → infrastructure → presentation)
+- OCR receipt parsing: images via Llama 4 Scout Vision, PDFs via Llama 3.3 70B (Groq)
+- 5 split modes: equally, by count, by percentage, by shares, by amount + per-unit assignment
+- Full bill flow: items → participants → assign → summary
+- Copy summary to clipboard (plain text for WhatsApp/iMessage)
+- In-memory storage, Zustand state management, 6 passing unit tests
+
+### ✅ Iteration 2 — Auth + Persistence
+- Supabase PostgreSQL with Row Level Security (per-user data isolation)
+- Email/password authentication (login, signup, email confirmation handling)
+- Bill history dashboard with status badges (Draft / Assigned), View Summary, Edit/Continue
+- Bill status auto-updates to "assigned" when split is complete
+- Inline participant rename (click name to edit in place)
+- Batch add items endpoint — OCR confirmation does one save instead of N serial saves
+- Fixed duplicate key race condition in `save()` — upsert + delete-orphans pattern
+- Test user creation script using Supabase Admin API
+
+### 🔜 Iteration 3 — Friends + Google OAuth + Debt Summary
+- **Google OAuth** — "Sign in with Google" button on login/signup pages via Supabase Auth provider
+- Friend system: send friend request by email → accept → added to friends list
+- Participant picker pulls from friends list when creating a bill
+- **Debt summary** (the Splitwise view): for each friend, show net balance aggregated across all shared bills — how much they owe you and how much you owe them
+- Friends page: one card per friend, running balance, list of shared bills
+- New DB tables: `friendships`, `friend_requests`
+
+### 🔜 Iteration 4 — Settle Up + Email Notifications
+- **Settle up**: enter a specific amount or settle full balance with any friend; creates a settlement record that offsets the running debt
+- Settlement history log per friendship
+- Payment deep-links alongside settle (PayPal / Venmo / UPI URL schemes — no Stripe yet)
+- **Email notifications** via Resend: triggered on bill creation, split update, and settlement
+  - Each participant gets their individual share shown prominently + full bill summary below
+- Optional Slack / WhatsApp webhook for power users
+
+### 🔜 Iteration 5 — Analytics + AI Intelligence
+- Analytics dashboard: spending per friend, per category, monthly trends
+- **Smart AI suggestions**: when uploading a bill, suggest participant splits based on past patterns with the same group
+- Bill templates: save a recurring group (roommates, team lunch) with preset participants and split mode
+- Multi-language OCR: auto-detect receipt language for international trips
+- Currency conversion with live exchange rates
+
+### 🔜 Iteration 6 — Production + Polish
+- Vercel deployment with environment management
+- PWA: installable, offline viewing of recent bills via service worker cache
+- Dark mode refinements + accessibility audit (WCAG AA)
+- End-to-end tests: Cypress or Playwright covering create bill → OCR → assign → settle flows
+- Error monitoring (Sentry) + performance budget
