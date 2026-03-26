@@ -15,7 +15,7 @@ type OcrResultPreviewProps = {
 type EditableItem = ParsedItemDto & { selected: boolean };
 
 export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
-  const { ocrResult, clearOcrResult, addItem, updateBillMeta } = useBillStore();
+  const { ocrResult, clearOcrResult, batchAddItems, updateBillMeta } = useBillStore();
   const { addToast } = useUiStore();
   const [items, setItems] = useState<EditableItem[]>(
     () => ocrResult?.parsedItems.map((item) => ({ ...item, selected: true })) ?? []
@@ -39,13 +39,14 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
     }
     setSaving(true);
     try {
-      for (const item of selected) {
-        await addItem(billId, {
+      await batchAddItems(
+        billId,
+        selected.map((item) => ({
           name: item.name,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-        });
-      }
+        }))
+      );
       // Auto-apply detected tax/fees (minus discount) and/or tip if checked
       let taxToApply: number | undefined;
       if (applyTax && ocrResult!.detectedTax !== null) {

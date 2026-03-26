@@ -13,6 +13,17 @@ export class CalculateSplitUseCase {
     if (!bill) throw new BillNotFoundError(billId);
 
     const result = calculateSplit(bill);
+
+    // Persist the status based on whether the split is complete
+    const newStatus = result.isComplete ? "assigned" : "draft";
+    if (bill.status !== newStatus) {
+      await this.billRepository.save({
+        ...bill,
+        status: newStatus,
+        updatedAt: new Date(),
+      });
+    }
+
     return mapSplitResult(result);
   }
 }

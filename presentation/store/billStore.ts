@@ -16,11 +16,13 @@ type BillState = {
 
   // Items
   addItem: (billId: string, item: { name: string; quantity: number; unitPrice: number; notes?: string }) => Promise<void>;
+  batchAddItems: (billId: string, items: Array<{ name: string; quantity: number; unitPrice: number; notes?: string }>) => Promise<void>;
   updateItem: (billId: string, itemId: string, patch: { name?: string; quantity?: number; unitPrice?: number; notes?: string | null }) => Promise<void>;
   deleteItem: (billId: string, itemId: string) => Promise<void>;
 
   // Participants
   addParticipant: (billId: string, name: string) => Promise<void>;
+  updateParticipant: (billId: string, participantId: string, name: string) => Promise<void>;
   removeParticipant: (billId: string, participantId: string) => Promise<void>;
 
   // Assignments
@@ -83,6 +85,15 @@ export const useBillStore = create<BillState>((set) => ({
     set({ currentBill: bill });
   },
 
+  batchAddItems: async (billId, items) => {
+    await apiFetch(`/api/bills/${billId}/items/batch`, {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    });
+    const bill = await apiFetch<BillDto>(`/api/bills/${billId}`);
+    set({ currentBill: bill });
+  },
+
   updateItem: async (billId, itemId, patch) => {
     await apiFetch(`/api/bills/${billId}/items/${itemId}`, {
       method: "PATCH",
@@ -101,6 +112,15 @@ export const useBillStore = create<BillState>((set) => ({
   addParticipant: async (billId, name) => {
     await apiFetch(`/api/bills/${billId}/participants`, {
       method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    const bill = await apiFetch<BillDto>(`/api/bills/${billId}`);
+    set({ currentBill: bill });
+  },
+
+  updateParticipant: async (billId, participantId, name) => {
+    await apiFetch(`/api/bills/${billId}/participants/${participantId}`, {
+      method: "PATCH",
       body: JSON.stringify({ name }),
     });
     const bill = await apiFetch<BillDto>(`/api/bills/${billId}`);

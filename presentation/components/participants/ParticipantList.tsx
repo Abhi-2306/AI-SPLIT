@@ -13,6 +13,7 @@ type ParticipantListProps = {
   billId: string;
 };
 
+
 export function ParticipantList({ participants, billId }: ParticipantListProps) {
   const { addParticipant, removeParticipant } = useBillStore();
   const { addToast } = useUiStore();
@@ -69,6 +70,7 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
               key={p.id}
               participant={p}
               index={idx}
+              billId={billId}
               onRemove={() => handleRemove(p.id, p.name)}
             />
           ))}
