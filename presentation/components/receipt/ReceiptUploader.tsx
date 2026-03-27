@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Button } from "@/presentation/components/ui/Button";
 import { useBillStore } from "@/presentation/store/billStore";
 import { useUiStore } from "@/presentation/store/uiStore";
@@ -9,6 +9,8 @@ import { SUPPORTED_RECEIPT_TYPES, MAX_UPLOAD_SIZE_BYTES, ACCEPTED_FILE_ATTR } fr
 type ReceiptUploaderProps = {
   billId: string;
 };
+
+type UsageInfo = { used: number; limit: number; remaining: number };
 
 function getFileIcon(type: string) {
   if (type === "application/pdf") return "📄";
@@ -19,10 +21,19 @@ export function ReceiptUploader({ billId }: ReceiptUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [usage, setUsage] = useState<UsageInfo | null>(null);
   const { uploadReceiptOcr } = useBillStore();
   const { ocrStatus, ocrProgress, setOcrStatus, addToast } = useUiStore();
 
   const isProcessing = ocrStatus === "uploading" || ocrStatus === "processing";
+  const atLimit = usage !== null && usage.remaining === 0;
+
+  useEffect(() => {
+    fetch("/api/ocr-usage")
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setUsage(j.data); })
+      .catch(() => null);
+  }, []);
 
   function validate(file: File): string | null {
     if (!SUPPORTED_RECEIPT_TYPES.includes(file.type)) {
@@ -45,7 +56,7 @@ export function ReceiptUploader({ billId }: ReceiptUploaderProps) {
     if (!selectedFile) return;
     try {
       setOcrStatus("uploading", 20);
-      await new Promise((r) => setTimeout(r, 100)); // let UI update
+      await new Promise((r) => setTimeout(r, 100));
       setOcrStatus("processing", 55);
       await uploadReceiptOcr(billId, selectedFile);
       setOcrStatus("complete", 100);
@@ -56,9 +67,14 @@ export function ReceiptUploader({ billId }: ReceiptUploaderProps) {
         "success"
       );
       setSelectedFile(null);
-    } catch {
+      // Decrement counter optimistically
+      setUsage((u) => u ? { ...u, used: u.used + 1, remaining: Math.max(0, u.remaining - 1) } : u);
+    } catch (err) {
       setOcrStatus("error", 0);
-      addToast("Processing failed. Please try again or add items manually.", "error");
+      addToast(
+        err instanceof Error ? err.message : "Processing failed. Please try again or add items manually.",
+        "error"
+      );
     }
   }
 
@@ -82,14 +98,20 @@ export function ReceiptUploader({ billId }: ReceiptUploaderProps) {
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
-        className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer ${
+        className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+          atLimit || isProcessing
+            ? "cursor-default"
+            : "cursor-pointer"
+        } ${
           isDragging
             ? "border-blue-400 bg-blue-50 dark:bg-blue-950"
             : selectedFile
             ? "border-green-400 bg-green-50 dark:bg-green-950"
+            : atLimit
+            ? "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 opacity-60"
             : "border-slate-300 dark:border-slate-600 hover:border-slate-400"
         }`}
-        onClick={() => !isProcessing && fileInputRef.current?.click()}
+        onClick={() => !isProcessing && !atLimit && fileInputRef.current?.click()}
       >
         <input
           ref={fileInputRef}
@@ -140,9 +162,20 @@ export function ReceiptUploader({ billId }: ReceiptUploaderProps) {
         )}
       </div>
 
+      {/* AI scan usage indicator */}
+      {atLimit ? (
+        <p className="text-xs text-center text-amber-600 dark:text-amber-400">
+          Daily scan limit reached. Resets at midnight UTC. You can still add items manually below.
+        </p>
+      ) : usage !== null ? (
+        <p className="text-xs text-center text-slate-400">
+          📷 AI receipt scanning · {usage.used} / {usage.limit === 999 ? "∞" : usage.limit} uses today
+        </p>
+      ) : null}
+
       {/* Scan button — only shown after file is selected */}
       {selectedFile && !isProcessing && (
-        <Button onClick={handleScan} className="w-full">
+        <Button onClick={handleScan} className="w-full" disabled={atLimit}>
           {selectedFile.type === "application/pdf"
             ? "📄 Extract Items from PDF"
             : "📷 Scan Receipt"}

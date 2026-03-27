@@ -29,3 +29,7 @@ export const ACCEPTED_FILE_ATTR = "image/jpeg,image/png,image/webp,image/gif,app
 
 export const MAX_PARTICIPANTS = 20;
 export const MAX_ITEMS = 100;
+
+// AI receipt scanning — per-user daily cap
+// Bypass: set OCR_BYPASS_USER_IDS="id1,id2" in .env.local / Vercel env vars
+export const OCR_DAILY_LIMIT = 5;
