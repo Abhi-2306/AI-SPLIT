@@ -38,6 +38,8 @@ export default function HomePage() {
   const [bills, setBills] = useState<BillSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/bills")
@@ -59,6 +61,24 @@ export default function HomePage() {
     router.refresh();
   }
 
+  async function handleDelete(bill: BillSummary) {
+    if (!confirm(`Delete "${bill.title}"? This cannot be undone.`)) return;
+    setDeletingId(bill.id);
+    try {
+      const res = await fetch(`/api/bills/${bill.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        setBills((prev) => prev.filter((b) => b.id !== bill.id));
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  const filteredBills = bills.filter((b) =>
+    b.title.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div>
       {/* Header */}
@@ -68,6 +88,9 @@ export default function HomePage() {
           <Button onClick={() => router.push(ROUTES.newBill)}>+ New Bill</Button>
           <Button variant="secondary" onClick={() => router.push(ROUTES.friends)}>
             Friends
+          </Button>
+          <Button variant="secondary" onClick={() => router.push(ROUTES.groups)}>
+            Groups
           </Button>
           <button
             onClick={() => router.push(ROUTES.profile)}
@@ -96,7 +119,34 @@ export default function HomePage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
         {/* Bills section */}
         <div>
-          <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Your Bills</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-slate-700 dark:text-slate-200">Your Bills</h2>
+          </div>
+
+          {/* Search bar */}
+          {bills.length > 0 && (
+            <div className="relative mb-3">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search bills…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="flex justify-center py-20">
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -108,9 +158,11 @@ export default function HomePage() {
               <p className="text-sm mt-1 mb-6">Create your first bill to get started</p>
               <Button onClick={() => router.push(ROUTES.newBill)}>Create a Bill</Button>
             </div>
+          ) : filteredBills.length === 0 ? (
+            <p className="text-center py-10 text-sm text-slate-400">No bills match "{search}"</p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              {bills.map((bill) => (
+              {filteredBills.map((bill) => (
                 <div
                   key={bill.id}
                   className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4"
@@ -152,6 +204,14 @@ export default function HomePage() {
                     >
                       {bill.status === "draft" ? "Continue" : "Edit"}
                     </Link>
+                    <button
+                      onClick={() => handleDelete(bill)}
+                      disabled={deletingId === bill.id}
+                      className="ml-auto text-xs px-2.5 py-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-50"
+                      title="Delete bill"
+                    >
+                      {deletingId === bill.id ? "…" : "Delete"}
+                    </button>
                   </div>
                 </div>
               ))}
