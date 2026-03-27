@@ -8,7 +8,6 @@ type Params = { params: Promise<{ friendId: string }> };
 // GET /api/friends/[friendId]/debt
 // Returns net balance between current user and a friend across shared bills.
 // Positive = friend owes me. Negative = I owe friend.
-// Uses splitResult.settlements (domain-calculated optimal settlement graph).
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
     const supabase = await createClient();
@@ -19,26 +18,29 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const { friendId } = await params;
 
-    // Find bill IDs where both users are linked participants
+    // Fetch participant entries (with their participant ID) for each user
     const [{ data: myRows, error: myErr }, { data: friendRows, error: friendErr }] =
       await Promise.all([
-        supabase.from("participants").select("bill_id").eq("user_id", user.id),
-        supabase.from("participants").select("bill_id").eq("user_id", friendId),
+        supabase.from("participants").select("id, bill_id").eq("user_id", user.id),
+        supabase.from("participants").select("id, bill_id").eq("user_id", friendId),
       ]);
 
     if (myErr) throw myErr;
     if (friendErr) throw friendErr;
 
-    const myBillIds = new Set((myRows ?? []).map((r) => r.bill_id));
-    const sharedBillIds = (friendRows ?? [])
-      .map((r) => r.bill_id)
-      .filter((id) => myBillIds.has(id));
+    // Build maps: bill_id → participant_id for fast lookup
+    const myParticipantByBill = new Map((myRows ?? []).map((r) => [r.bill_id, r.id]));
+    const friendParticipantByBill = new Map((friendRows ?? []).map((r) => [r.bill_id, r.id]));
+
+    // Bills where both users are linked participants
+    const sharedBillIds = [...myParticipantByBill.keys()].filter((id) =>
+      friendParticipantByBill.has(id)
+    );
 
     if (sharedBillIds.length === 0) {
       return successResponse({ netBalance: 0, currency: null, bills: [] });
     }
 
-    // Per-currency net balances (since bills can have different currencies)
     const netByCurrency: Record<string, number> = {};
     const billBreakdowns: Array<{
       billId: string;
@@ -50,6 +52,9 @@ export async function GET(_request: NextRequest, { params }: Params) {
     }> = [];
 
     for (const billId of sharedBillIds) {
+      const myParticipantId = myParticipantByBill.get(billId)!;
+      const friendParticipantId = friendParticipantByBill.get(billId)!;
+
       const [bill, splitResult] = await Promise.all([
         container.getBill.execute(billId),
         container.calculateSplit.execute(billId).catch(() => null),
@@ -57,23 +62,26 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
       if (!bill || !splitResult || bill.status === "draft") continue;
 
-      // Use the settlement graph calculated by the domain service.
-      // Filter settlements involving the current user and the friend.
+      // Match settlements using participant IDs (always set, unlike userId which may be null)
       let netEffect = 0;
       for (const s of splitResult.settlements) {
-        if (s.from.userId === user.id && s.to.userId === friendId) {
-          // I owe friend this amount
+        if (s.from.id === myParticipantId && s.to.id === friendParticipantId) {
+          // I owe friend
           netEffect -= s.amount;
-        } else if (s.from.userId === friendId && s.to.userId === user.id) {
-          // Friend owes me this amount
+        } else if (s.from.id === friendParticipantId && s.to.id === myParticipantId) {
+          // Friend owes me
           netEffect += s.amount;
         }
       }
 
       netByCurrency[bill.currency] = (netByCurrency[bill.currency] ?? 0) + netEffect;
 
-      const myEntry = splitResult.participantSplits.find((ps) => ps.participant.userId === user.id);
-      const friendEntry = splitResult.participantSplits.find((ps) => ps.participant.userId === friendId);
+      const myEntry = splitResult.participantSplits.find(
+        (ps) => ps.participant.id === myParticipantId
+      );
+      const friendEntry = splitResult.participantSplits.find(
+        (ps) => ps.participant.id === friendParticipantId
+      );
 
       if (!myEntry || !friendEntry) continue;
 
@@ -87,8 +95,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
       });
     }
 
-    // If all bills share a single currency, return a clean net balance.
-    // If mixed currencies, return the breakdown only (netBalance = 0 signals "see details").
     const currencies = Object.keys(netByCurrency);
     const netBalance =
       currencies.length === 1
