@@ -65,6 +65,9 @@ export default function HomePage() {
           <Button onClick={() => router.push(ROUTES.newBill)}>
             + New Bill
           </Button>
+          <Button variant="secondary" onClick={() => router.push(ROUTES.friends)}>
+            Friends
+          </Button>
           <Button variant="ghost" onClick={handleSignOut}>
             Sign Out
           </Button>

@@ -81,9 +81,9 @@ Supabase Auth handles sessions via `@supabase/ssr`. Two clients:
 - `lib/supabase/client.ts` — browser client (`createBrowserClient`), used in Client Components and auth forms.
 - `lib/supabase/server.ts` — async server client (`createServerClient` + `cookies()`), used in API routes and the repository.
 
-`middleware.ts` protects all page routes (excludes `/api/`, `/_next/`, `/login`, `/signup`). Unauthenticated page requests redirect to `/login`; authenticated users visiting auth pages redirect to `/`.
+`middleware.ts` protects all page routes (excludes `/api/`, `/_next/`, `/login`, `/signup`, `/auth/callback`). Unauthenticated page requests redirect to `/login`; authenticated users visiting auth pages redirect to `/`.
 
-Supported auth methods: email/password. Google OAuth is planned for Iteration 3.
+Supported auth methods: email/password and Google OAuth. OAuth callback is handled by `app/auth/callback/route.ts` which exchanges the code for a session via `supabase.auth.exchangeCodeForSession(code)`.
 
 To create a pre-confirmed test user (no email confirmation required):
 ```bash
@@ -121,13 +121,15 @@ GROQ_API_KEY=                    # Groq API key for OCR
 - Fixed duplicate key race condition in `save()` — upsert + delete-orphans pattern
 - Test user creation script using Supabase Admin API
 
-### 🔜 Iteration 3 — Friends + Google OAuth + Debt Summary
-- **Google OAuth** — "Sign in with Google" button on login/signup pages via Supabase Auth provider
-- Friend system: send friend request by email → accept → added to friends list
-- Participant picker pulls from friends list when creating a bill
-- **Debt summary** (the Splitwise view): for each friend, show net balance aggregated across all shared bills — how much they owe you and how much you owe them
-- Friends page: one card per friend, running balance, list of shared bills
-- New DB tables: `friendships`, `friend_requests`
+### ✅ Iteration 3 — Friends + Google OAuth + Debt Summary
+- **Google OAuth** — "Sign in with Google" button on login/signup pages; callback at `app/auth/callback/route.ts`
+- `profiles` table auto-populated on signup via Postgres trigger; stores `display_name` + `avatar_url`
+- Friend system: send request by email → accept → friends list; DB tables `friend_requests` + `friendships` (canonical ordering `user_a < user_b`); atomic accept via `accept_friend_request(request_id)` SECURITY DEFINER function
+- `Participant.userId` field links participants to registered users; propagated through domain, DTOs, mappers, repository
+- Participant picker: "Friends" dropdown in the add-participant form — adds friend as linked participant
+- **Debt summary**: `/friends` page shows net balance per friend, aggregated across shared bills; expandable per-bill breakdown
+- Friend request API: `GET/POST /api/friends`, `GET /api/friends/requests`, `PATCH /api/friends/requests/[id]`, `GET /api/friends/[friendId]/debt`
+- Bills RLS updated to allow participant-linked users to see shared bills
 
 ### 🔜 Iteration 4 — Settle Up + Email Notifications
 - **Settle up**: enter a specific amount or settle full balance with any friend; creates a settlement record that offsets the running debt

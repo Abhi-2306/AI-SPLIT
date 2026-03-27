@@ -1,6 +1,7 @@
 export type ParticipantDto = {
   id: string;
   name: string;
+  userId: string | null;
   createdAt: string;
 };
 

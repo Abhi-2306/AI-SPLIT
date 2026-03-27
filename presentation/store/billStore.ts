@@ -21,7 +21,7 @@ type BillState = {
   deleteItem: (billId: string, itemId: string) => Promise<void>;
 
   // Participants
-  addParticipant: (billId: string, name: string) => Promise<void>;
+  addParticipant: (billId: string, name: string, userId?: string | null) => Promise<void>;
   updateParticipant: (billId: string, participantId: string, name: string) => Promise<void>;
   removeParticipant: (billId: string, participantId: string) => Promise<void>;
 
@@ -109,10 +109,10 @@ export const useBillStore = create<BillState>((set) => ({
     set({ currentBill: bill });
   },
 
-  addParticipant: async (billId, name) => {
+  addParticipant: async (billId, name, userId) => {
     await apiFetch(`/api/bills/${billId}/participants`, {
       method: "POST",
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, userId: userId ?? null }),
     });
     const bill = await apiFetch<BillDto>(`/api/bills/${billId}`);
     set({ currentBill: bill });

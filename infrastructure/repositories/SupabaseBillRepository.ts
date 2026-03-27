@@ -60,6 +60,7 @@ export class SupabaseBillRepository implements IBillRepository {
       (row) => ({
         id: asParticipantId(row.id),
         name: row.name,
+        userId: row.user_id ?? null,
         createdAt: new Date(row.created_at),
       })
     );
@@ -175,6 +176,7 @@ export class SupabaseBillRepository implements IBillRepository {
       id: p.id,
       bill_id: bill.id,
       name: p.name,
+      user_id: p.userId ?? null,
       created_at: p.createdAt.toISOString(),
     }));
     if (participantRows.length > 0) {

@@ -127,6 +127,7 @@ export class GroqReceiptService implements IReceiptExtractorService {
       parsedItems: [],
       detectedCurrency: null,
       detectedTax: null,
+      detectedDiscount: null,
       detectedTip: null,
       detectedTotal: null,
     };

@@ -9,7 +9,7 @@ import { useUiStore } from "@/presentation/store/uiStore";
 type ParticipantChipProps = {
   participant: ParticipantDto;
   index: number;
-  billId: string;
+  billId?: string;
   onRemove?: () => void;
 };
 
@@ -32,6 +32,7 @@ export function ParticipantChip({ participant, index, billId, onRemove }: Partic
       setEditing(false);
       return;
     }
+    if (!billId) { setEditing(false); return; }
     try {
       await updateParticipant(billId, participant.id, trimmed);
       setEditing(false);
@@ -65,9 +66,9 @@ export function ParticipantChip({ participant, index, billId, onRemove }: Partic
     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 text-sm font-medium group">
       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colorClass}`} />
       <button
-        onClick={() => setEditing(true)}
-        className="text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-        title={`Rename ${participant.name}`}
+        onClick={() => billId && setEditing(true)}
+        className={`text-slate-700 dark:text-slate-200 transition-colors ${billId ? "hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer" : "cursor-default"}`}
+        title={billId ? `Rename ${participant.name}` : participant.name}
       >
         {participant.name}
       </button>

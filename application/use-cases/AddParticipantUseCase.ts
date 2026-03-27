@@ -10,6 +10,7 @@ import { mapParticipant } from "../dtos/mappers";
 export type AddParticipantInput = {
   billId: string;
   name: string;
+  userId?: string | null;
 };
 
 export class AddParticipantUseCase {
@@ -40,6 +41,7 @@ export class AddParticipantUseCase {
     const participant = {
       id: asParticipantId(generateId()),
       name: trimmedName,
+      userId: input.userId ?? null,
       createdAt: new Date(),
     };
 

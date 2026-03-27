@@ -13,7 +13,7 @@ import type {
 } from "./index";
 
 export function mapParticipant(p: Participant): ParticipantDto {
-  return { id: p.id, name: p.name, createdAt: p.createdAt.toISOString() };
+  return { id: p.id, name: p.name, userId: p.userId, createdAt: p.createdAt.toISOString() };
 }
 
 export function mapBillItem(item: BillItem): BillItemDto {
