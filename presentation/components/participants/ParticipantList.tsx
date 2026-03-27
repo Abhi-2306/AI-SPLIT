@@ -21,14 +21,20 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [showFriendPicker, setShowFriendPicker] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string; displayName: string } | null>(null);
 
   useEffect(() => {
     loadFriends();
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setCurrentUser({ id: j.data.id, displayName: j.data.displayName }); })
+      .catch(() => null);
   }, [loadFriends]);
 
   // Friends not already in the bill
   const linkedUserIds = new Set(participants.map((p) => p.userId).filter(Boolean));
   const availableFriends = friends.filter((f) => !linkedUserIds.has(f.userId));
+  const selfNotInBill = currentUser && !linkedUserIds.has(currentUser.id);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -77,6 +83,16 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
             Add
           </Button>
         </form>
+
+        {selfNotInBill && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => addParticipant(billId, currentUser!.displayName, currentUser!.id).catch(() => addToast("Failed to add yourself", "error"))}
+          >
+            + Add me
+          </Button>
+        )}
 
         {availableFriends.length > 0 && (
           <div className="relative">
