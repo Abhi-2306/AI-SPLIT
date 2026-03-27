@@ -18,28 +18,53 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const { friendId } = await params;
 
-    // Fetch participant entries (with their participant ID) for each user
-    const [{ data: myRows, error: myErr }, { data: friendRows, error: friendErr }] =
-      await Promise.all([
-        supabase.from("participants").select("id, bill_id").eq("user_id", user.id),
-        supabase.from("participants").select("id, bill_id").eq("user_id", friendId),
-      ]);
+    // Three parallel queries:
+    // 1. Bills where current user is a linked participant (userId set on participant row)
+    // 2. Bills current user CREATED with paidBy set — fallback for when creator's participant has userId=NULL
+    // 3. Bills FRIEND CREATED with paidBy set — fallback for when friend's participant has userId=NULL
+    const [
+      { data: myParticipantRows, error: myErr },
+      { data: myCreatedBills, error: myCreatedErr },
+      { data: friendCreatedBills, error: friendCreatedErr },
+    ] = await Promise.all([
+      supabase.from("participants").select("id, bill_id").eq("user_id", user.id),
+      supabase
+        .from("bills")
+        .select("id, paid_by_participant_id")
+        .eq("user_id", user.id)
+        .not("paid_by_participant_id", "is", null),
+      supabase
+        .from("bills")
+        .select("id, paid_by_participant_id")
+        .eq("user_id", friendId)
+        .not("paid_by_participant_id", "is", null),
+    ]);
 
     if (myErr) throw myErr;
-    if (friendErr) throw friendErr;
+    if (myCreatedErr) throw myCreatedErr;
+    if (friendCreatedErr) throw friendCreatedErr;
 
-    // Build maps: bill_id → participant_id for fast lookup
-    const myParticipantByBill = new Map((myRows ?? []).map((r) => [r.bill_id, r.id]));
-    const friendParticipantByBill = new Map((friendRows ?? []).map((r) => [r.bill_id, r.id]));
+    // Build my participant map: bill_id → my participant_id
+    const myParticipantByBill = new Map((myParticipantRows ?? []).map((r) => [r.bill_id, r.id]));
 
-    // Bills where both users are linked participants
-    const sharedBillIds = [...myParticipantByBill.keys()].filter((id) =>
-      friendParticipantByBill.has(id)
-    );
+    // Fallback: for bills I created where my participant has userId=NULL,
+    // assume paidByParticipantId is mine (creator typically sets themselves as payer)
+    for (const b of myCreatedBills ?? []) {
+      if (!myParticipantByBill.has(b.id) && b.paid_by_participant_id) {
+        myParticipantByBill.set(b.id, b.paid_by_participant_id);
+      }
+    }
 
-    if (sharedBillIds.length === 0) {
+    if (myParticipantByBill.size === 0) {
       return successResponse({ netBalance: 0, currency: null, bills: [] });
     }
+
+    // Fallback map for finding friend's participant when their userId=NULL on the row
+    const friendParticipantFromCreation = new Map(
+      (friendCreatedBills ?? [])
+        .filter((b) => b.paid_by_participant_id)
+        .map((b) => [b.id, b.paid_by_participant_id as string])
+    );
 
     const netByCurrency: Record<string, number> = {};
     const billBreakdowns: Array<{
@@ -51,10 +76,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       currency: string;
     }> = [];
 
-    for (const billId of sharedBillIds) {
-      const myParticipantId = myParticipantByBill.get(billId)!;
-      const friendParticipantId = friendParticipantByBill.get(billId)!;
-
+    for (const [billId, myParticipantId] of myParticipantByBill.entries()) {
       const [bill, splitResult] = await Promise.all([
         container.getBill.execute(billId),
         container.calculateSplit.execute(billId).catch(() => null),
@@ -62,15 +84,21 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
       if (!bill || !splitResult || bill.status === "draft") continue;
 
-      // Match settlements using participant IDs (always set, unlike userId which may be null)
+      // Find friend's participant: by userId in bill.participants first,
+      // then fall back to paidByParticipantId on bills the friend created
+      const friendParticipantByUserId = bill.participants.find((p) => p.userId === friendId);
+      const friendParticipantId =
+        friendParticipantByUserId?.id ?? friendParticipantFromCreation.get(billId) ?? null;
+
+      if (!friendParticipantId) continue; // friend not in this bill
+
+      // Match settlements using participant IDs (SettlementDto.amount is a plain number)
       let netEffect = 0;
       for (const s of splitResult.settlements) {
         if (s.from.id === myParticipantId && s.to.id === friendParticipantId) {
-          // I owe friend
-          netEffect -= s.amount;
+          netEffect -= s.amount; // I owe friend
         } else if (s.from.id === friendParticipantId && s.to.id === myParticipantId) {
-          // Friend owes me
-          netEffect += s.amount;
+          netEffect += s.amount; // Friend owes me
         }
       }
 
