@@ -21,13 +21,13 @@ export async function GET() {
     if (fromIds.length === 0) return successResponse([]);
 
     const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, display_name, avatar_url")
-      .in("id", fromIds);
+      .rpc("get_users_display_info", { user_ids: fromIds });
 
     if (profilesError) throw profilesError;
 
-    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    type ProfileRow = { id: string; display_name: string; avatar_url: string | null };
+    const rows = (profiles ?? []) as ProfileRow[];
+    const profileMap = new Map(rows.map((p) => [p.id, p]));
 
     const result = (requests ?? []).map((r) => {
       const profile = profileMap.get(r.from_user);

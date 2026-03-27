@@ -1,5 +1,6 @@
 export const ROUTES = {
   home: "/",
+  profile: "/profile",
   friends: "/friends",
   newBill: "/bills/new",
   bill: (billId: string) => `/bills/${billId}`,

@@ -8,6 +8,8 @@ import { Button } from "@/presentation/components/ui/Button";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatAmount } from "@/lib/utils/currency";
 
+type CurrentUser = { displayName: string; avatarUrl: string | null };
+
 type BillSummary = {
   id: string;
   title: string;
@@ -34,15 +36,19 @@ export default function HomePage() {
   const router = useRouter();
   const [bills, setBills] = useState<BillSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
     fetch("/api/bills")
       .then((r) => r.json())
-      .then((json) => {
-        if (json.success) setBills(json.data);
-      })
+      .then((json) => { if (json.success) setBills(json.data); })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((json) => { if (json.success) setCurrentUser(json.data); })
+      .catch(console.error);
   }, []);
 
   async function handleSignOut() {
@@ -61,16 +67,29 @@ export default function HomePage() {
             Your Bills
           </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button onClick={() => router.push(ROUTES.newBill)}>
             + New Bill
           </Button>
           <Button variant="secondary" onClick={() => router.push(ROUTES.friends)}>
             Friends
           </Button>
-          <Button variant="ghost" onClick={handleSignOut}>
-            Sign Out
-          </Button>
+          <button
+            onClick={() => router.push(ROUTES.profile)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            title="Profile"
+          >
+            {currentUser?.avatarUrl ? (
+              <img src={currentUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 text-xs font-bold">
+                {currentUser?.displayName?.charAt(0).toUpperCase() ?? "?"}
+              </div>
+            )}
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200 hidden sm:block">
+              {currentUser?.displayName ?? ""}
+            </span>
+          </button>
         </div>
       </div>
 

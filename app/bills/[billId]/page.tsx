@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useBillStore } from "@/presentation/store/billStore";
 import { useUiStore } from "@/presentation/store/uiStore";
@@ -25,10 +25,11 @@ type Params = { params: Promise<{ billId: string }> };
 export default function BillPage({ params }: Params) {
   const { billId } = use(params);
   const router = useRouter();
-  const { currentBill, loadBill, updateBillMeta, ocrResult } = useBillStore();
+  const { currentBill, loadBill, updateBillMeta, ocrResult, addParticipant } = useBillStore();
   const { addToast } = useUiStore();
   const [step, setStep] = useState(1);
   const [loadError, setLoadError] = useState(false);
+  const autoAddedRef = useRef(false);
 
   // Read ?step= from URL on mount (e.g. when navigating back from summary)
   useEffect(() => {
@@ -41,6 +42,23 @@ export default function BillPage({ params }: Params) {
   useEffect(() => {
     loadBill(billId).catch(() => setLoadError(true));
   }, [billId, loadBill]);
+
+  // Auto-add current user as a participant when entering step 2 (once per bill load)
+  useEffect(() => {
+    if (step !== 2 || !currentBill || autoAddedRef.current) return;
+    autoAddedRef.current = true;
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((json) => {
+        if (!json.success) return;
+        const { id: userId, displayName } = json.data;
+        const alreadyIn = currentBill.participants.some((p) => p.userId === userId);
+        if (!alreadyIn) {
+          addParticipant(billId, displayName, userId).catch(() => null);
+        }
+      })
+      .catch(() => null);
+  }, [step, currentBill, billId, addParticipant]);
 
   if (loadError) {
     return (

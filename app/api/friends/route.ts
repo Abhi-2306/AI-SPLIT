@@ -27,13 +27,13 @@ export async function GET() {
     }
 
     const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, display_name, avatar_url")
-      .in("id", friendIds);
+      .rpc("get_users_display_info", { user_ids: friendIds });
 
     if (profilesError) throw profilesError;
 
-    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    type ProfileRow = { id: string; display_name: string; avatar_url: string | null };
+    const rows = (profiles ?? []) as ProfileRow[];
+    const profileMap = new Map(rows.map((p) => [p.id, p]));
 
     const friends = (friendships ?? []).map((f) => {
       const friendId = f.user_a === user.id ? f.user_b : f.user_a;

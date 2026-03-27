@@ -11,6 +11,7 @@ import { ROUTES } from "@/lib/constants/routes";
 
 type DebtSummary = {
   netBalance: number;
+  currency: string | null;
   bills: Array<{
     billId: string;
     billTitle: string;
@@ -33,7 +34,10 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
   }, [friend.userId]);
 
   const balance = debt?.netBalance ?? 0;
-  const hasBalance = Math.abs(balance) > 0.005;
+  const currency = debt?.currency ?? null;
+  // Show balance only when we have a single currency and a non-trivial amount
+  const hasBalance = Math.abs(balance) > 0.005 && currency !== null;
+  const mixedCurrencies = debt !== null && currency === null && (debt.bills.length > 0);
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
@@ -53,9 +57,11 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
             ) : hasBalance ? (
               <p className={`text-xs font-medium ${balance > 0 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
                 {balance > 0
-                  ? `Owes you ${formatAmount(Math.abs(balance), "USD")}`
-                  : `You owe ${formatAmount(Math.abs(balance), "USD")}`}
+                  ? `Owes you ${formatAmount(Math.abs(balance), currency!)}`
+                  : `You owe ${formatAmount(Math.abs(balance), currency!)}`}
               </p>
+            ) : mixedCurrencies ? (
+              <p className="text-xs text-slate-400">Multiple currencies — see details</p>
             ) : (
               <p className="text-xs text-slate-400">All settled up</p>
             )}
@@ -98,10 +104,15 @@ export default function FriendsPage() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ displayName: string; avatarUrl: string | null } | null>(null);
 
   useEffect(() => {
     loadFriends();
     loadRequests();
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setCurrentUser(j.data); })
+      .catch(() => null);
   }, [loadFriends, loadRequests]);
 
   async function handleSendRequest(e: React.FormEvent) {
@@ -146,9 +157,27 @@ export default function FriendsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Friends</h1>
-        <Button variant="ghost" onClick={() => router.push(ROUTES.home)}>
-          ← Home
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push(ROUTES.profile)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            title="Profile"
+          >
+            {currentUser?.avatarUrl ? (
+              <img src={currentUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 text-xs font-bold">
+                {currentUser?.displayName?.charAt(0).toUpperCase() ?? "?"}
+              </div>
+            )}
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200 hidden sm:block">
+              {currentUser?.displayName ?? ""}
+            </span>
+          </button>
+          <Button variant="ghost" onClick={() => router.push(ROUTES.home)}>
+            ← Home
+          </Button>
+        </div>
       </div>
 
       {/* Send friend request */}
