@@ -141,7 +141,8 @@ GROQ_API_KEY=                    # Groq API key for OCR
 
 ### 🔜 Iteration 5 — Analytics + AI Intelligence
 - Analytics dashboard: spending per friend, per category, monthly trends
-- **Smart AI suggestions**: when uploading a bill, suggest participant splits based on past patterns with the same group
+- **AI Smart Split Agent**: after OCR, an AI agent analyzes each receipt item + the participant list and suggests who should pay for what (e.g. Pizza → Abhijith, Rahul · Beer → Rahul · Uber → everyone). User can accept the full suggestion or edit individual assignments before confirming. Uses the Groq LLM already wired for OCR — same model, new prompt. Makes the app feel like a smart fintech product rather than a manual splitter.
+- **Smart pattern suggestions**: beyond item-level analysis, suggest split modes based on past behavior with the same group (e.g. "you always split Uber equally with this group")
 - Bill templates: save a recurring group (roommates, team lunch) with preset participants and split mode
 - Multi-language OCR: auto-detect receipt language for international trips
 - Currency conversion with live exchange rates
