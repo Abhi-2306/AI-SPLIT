@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useFriendStore, type FriendDto } from "@/presentation/store/friendStore";
 import { useUiStore } from "@/presentation/store/uiStore";
@@ -22,84 +22,307 @@ type DebtSummary = {
   }>;
 };
 
+type Settlement = {
+  id: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+  settledAt: string;
+  paidByMe: boolean;
+};
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 function FriendDebtCard({ friend }: { friend: FriendDto }) {
   const [debt, setDebt] = useState<DebtSummary | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [settleAmount, setSettleAmount] = useState("");
+  const [settleDirection, setSettleDirection] = useState<"i_paid" | "they_paid">("i_paid");
+  const [settleNote, setSettleNote] = useState("");
+  const [settling, setSettling] = useState(false);
+  const settlementsLoaded = useRef(false);
+  const { addToast } = useUiStore();
 
-  useEffect(() => {
+  function loadDebt() {
     fetch(`/api/friends/${friend.userId}/debt`)
       .then((r) => r.json())
       .then((j) => { if (j.success) setDebt(j.data); })
       .catch(() => null);
-  }, [friend.userId]);
+  }
+
+  function loadSettlements() {
+    fetch(`/api/friends/${friend.userId}/settlements`)
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setSettlements(j.data); })
+      .catch(() => null);
+  }
+
+  useEffect(() => { loadDebt(); }, [friend.userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (expanded && !settlementsLoaded.current) {
+      settlementsLoaded.current = true;
+      loadSettlements();
+    }
+  }, [expanded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function openModal() {
+    const abs = debt ? Math.abs(debt.netBalance) : 0;
+    setSettleAmount(abs > 0.005 ? abs.toFixed(2) : "");
+    // Pre-select direction based on who owes: if I owe → I pay; if they owe → they pay
+    setSettleDirection((debt?.netBalance ?? 0) < 0 ? "i_paid" : "they_paid");
+    setSettleNote("");
+    setShowModal(true);
+  }
+
+  async function handleSettle() {
+    const amount = parseFloat(settleAmount);
+    if (!amount || amount <= 0) return;
+    setSettling(true);
+    try {
+      const res = await fetch(`/api/friends/${friend.userId}/settle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          currency: debt?.currency ?? "INR",
+          note: settleNote.trim() || undefined,
+          direction: settleDirection,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? "Failed to record payment");
+      addToast("Payment recorded!", "success");
+      setShowModal(false);
+      loadDebt();
+      loadSettlements();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Failed to record payment", "error");
+    } finally {
+      setSettling(false);
+    }
+  }
 
   const balance = debt?.netBalance ?? 0;
   const currency = debt?.currency ?? null;
-  // Show balance only when we have a single currency and a non-trivial amount
   const hasBalance = Math.abs(balance) > 0.005 && currency !== null;
-  const mixedCurrencies = debt !== null && currency === null && (debt.bills.length > 0);
+  const mixedCurrencies = debt !== null && currency === null && debt.bills.length > 0;
+  const hasActivity = (debt?.bills.length ?? 0) > 0 || settlements.length > 0;
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {friend.avatarUrl ? (
-            <img src={friend.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
-          ) : (
-            <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-semibold text-sm">
-              {friend.displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <div>
-            <p className="font-semibold text-slate-800 dark:text-slate-100">{friend.displayName}</p>
-            {debt === null ? (
-              <p className="text-xs text-slate-400">Loading…</p>
-            ) : hasBalance ? (
-              <p className={`text-xs font-medium ${balance > 0 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
-                {balance > 0
-                  ? `Owes you ${formatAmount(Math.abs(balance), currency!)}`
-                  : `You owe ${formatAmount(Math.abs(balance), currency!)}`}
-              </p>
-            ) : mixedCurrencies ? (
-              <p className="text-xs text-slate-400">Multiple currencies — see details</p>
+    <>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            {friend.avatarUrl ? (
+              <img src={friend.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
             ) : (
-              <p className="text-xs text-slate-400">All settled up</p>
+              <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-semibold text-sm flex-shrink-0">
+                {friend.displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                {friend.displayName}
+              </p>
+              {debt === null ? (
+                <p className="text-xs text-slate-400">Loading…</p>
+              ) : hasBalance ? (
+                <p className={`text-xs font-medium ${balance > 0 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
+                  {balance > 0
+                    ? `Owes you ${formatAmount(Math.abs(balance), currency!)}`
+                    : `You owe ${formatAmount(Math.abs(balance), currency!)}`}
+                </p>
+              ) : mixedCurrencies ? (
+                <p className="text-xs text-slate-400">Multiple currencies — see details</p>
+              ) : (
+                <p className="text-xs text-green-600 dark:text-green-400 font-medium">All settled up ✓</p>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {hasActivity && (
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                {expanded ? "Hide" : "Details"}
+              </button>
+            )}
+            {debt !== null && (
+              <button
+                onClick={openModal}
+                className="text-xs px-2.5 py-1 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors"
+              >
+                Settle Up
+              </button>
             )}
           </div>
         </div>
-        {(debt?.bills.length ?? 0) > 0 && (
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="text-xs text-blue-600 hover:underline"
-          >
-            {expanded ? "Hide" : "Details"}
-          </button>
+
+        {/* Expanded section */}
+        {expanded && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-3">
+            {/* Bill breakdown */}
+            {debt && debt.bills.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Bills</p>
+                <div className="flex flex-col gap-1.5">
+                  {debt.bills.map((b) => (
+                    <div key={b.billId} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600 dark:text-slate-300 truncate mr-2">{b.billTitle}</span>
+                      <span className={`font-medium flex-shrink-0 ${b.netEffect > 0 ? "text-green-600" : b.netEffect < 0 ? "text-red-500" : "text-slate-400"}`}>
+                        {b.netEffect > 0
+                          ? `+${formatAmount(b.netEffect, b.currency)}`
+                          : b.netEffect < 0
+                          ? `-${formatAmount(Math.abs(b.netEffect), b.currency)}`
+                          : "settled"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Settlement history */}
+            {settlements.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Payments recorded</p>
+                <div className="flex flex-col gap-1.5">
+                  {settlements.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500 dark:text-slate-400 text-xs">{timeAgo(s.settledAt)}</span>
+                      <div className="flex items-center gap-2">
+                        {s.note && (
+                          <span className="text-xs text-slate-400 italic truncate max-w-[100px]">{s.note}</span>
+                        )}
+                        <span className={`font-medium flex-shrink-0 ${s.paidByMe ? "text-red-500" : "text-green-600"}`}>
+                          {s.paidByMe
+                            ? `You paid ${formatAmount(s.amount, s.currency)}`
+                            : `${friend.displayName.split(" ")[0]} paid ${formatAmount(s.amount, s.currency)}`}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {expanded && debt && debt.bills.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2">
-          {debt.bills.map((b) => (
-            <div key={b.billId} className="flex items-center justify-between text-sm">
-              <span className="text-slate-600 dark:text-slate-300 truncate mr-2">{b.billTitle}</span>
-              <span className={`font-medium flex-shrink-0 ${b.netEffect > 0 ? "text-green-600" : b.netEffect < 0 ? "text-red-500" : "text-slate-400"}`}>
-                {b.netEffect > 0
-                  ? `+${formatAmount(b.netEffect, b.currency)}`
-                  : b.netEffect < 0
-                  ? `-${formatAmount(Math.abs(b.netEffect), b.currency)}`
-                  : "settled"}
+      {/* Settle Up Modal */}
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+        >
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1">
+              Settle Up
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+              Record a payment with{" "}
+              <span className="font-medium text-slate-700 dark:text-slate-300">
+                {friend.displayName}
               </span>
+            </p>
+
+            {/* Direction toggle */}
+            <div className="flex rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden mb-4">
+              <button
+                onClick={() => setSettleDirection("i_paid")}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  settleDirection === "i_paid"
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+              >
+                I paid
+              </button>
+              <button
+                onClick={() => setSettleDirection("they_paid")}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  settleDirection === "they_paid"
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+              >
+                {friend.displayName.split(" ")[0]} paid
+              </button>
             </div>
-          ))}
+
+            <p className="text-xs text-slate-400 mb-4">
+              {settleDirection === "i_paid"
+                ? `You paid ${friend.displayName.split(" ")[0]}`
+                : `${friend.displayName.split(" ")[0]} paid you`}
+            </p>
+
+            {/* Amount */}
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Amount {debt?.currency ? `(${debt.currency})` : ""}
+              </label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="0.00"
+                value={settleAmount}
+                onChange={(e) => setSettleAmount(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            {/* Note */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Note <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <Input
+                placeholder="e.g. Dinner last night"
+                value={settleNote}
+                onChange={(e) => setSettleNote(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSettle()}
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                loading={settling}
+                disabled={!settleAmount || parseFloat(settleAmount) <= 0}
+                onClick={handleSettle}
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 export default function FriendsPage() {
   const router = useRouter();
-  const { friends, requests, loading, loadFriends, loadRequests, sendRequest, acceptRequest, rejectRequest } = useFriendStore();
+  const { friends, requests, loading, loadFriends, loadRequests, sendRequest, acceptRequest, rejectRequest } =
+    useFriendStore();
   const { addToast } = useUiStore();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -155,6 +378,7 @@ export default function FriendsPage() {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Friends</h1>
         <div className="flex items-center gap-2">

@@ -123,6 +123,27 @@ export async function GET(_request: NextRequest, { params }: Params) {
       });
     }
 
+    // Apply recorded manual settlements to offset the bill-based debt
+    const { data: settlementRows } = await supabase
+      .from("settlements")
+      .select("from_user, to_user, amount, currency")
+      .or(
+        `and(from_user.eq.${user.id},to_user.eq.${friendId}),and(from_user.eq.${friendId},to_user.eq.${user.id})`
+      );
+
+    for (const s of settlementRows ?? []) {
+      const cur = s.currency;
+      if (netByCurrency[cur] === undefined) netByCurrency[cur] = 0;
+      const amt = Number(s.amount);
+      if (s.from_user === user.id) {
+        // I paid friend → reduces my debt (shifts balance toward positive)
+        netByCurrency[cur] += amt;
+      } else {
+        // Friend paid me → reduces their debt (shifts balance toward negative)
+        netByCurrency[cur] -= amt;
+      }
+    }
+
     const currencies = Object.keys(netByCurrency);
     const netBalance =
       currencies.length === 1
