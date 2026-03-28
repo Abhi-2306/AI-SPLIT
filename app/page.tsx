@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/presentation/components/ui/Button";
 import { ConfirmDialog } from "@/presentation/components/ui/ConfirmDialog";
+import { useUiStore } from "@/presentation/store/uiStore";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatAmount } from "@/lib/utils/currency";
 import { ActivityFeed } from "@/presentation/components/activity/ActivityFeed";
@@ -42,6 +43,7 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmBill, setConfirmBill] = useState<BillSummary | null>(null);
+  const { addToast } = useUiStore();
 
   useEffect(() => {
     fetch("/api/bills")
@@ -71,9 +73,13 @@ export default function HomePage() {
       const json = await res.json();
       if (json.success) {
         setBills((prev) => prev.filter((b) => b.id !== confirmBill.id));
-        // Notify the friends page to refresh debt balances
         window.dispatchEvent(new CustomEvent("bill-deleted"));
+        addToast("Bill deleted", "success");
+      } else {
+        addToast(json.error?.message ?? "Failed to delete bill", "error");
       }
+    } catch {
+      addToast("Failed to delete bill", "error");
     } finally {
       setDeletingId(null);
       setConfirmBill(null);

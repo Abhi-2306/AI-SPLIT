@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <body className="min-h-screen bg-slate-50 dark:bg-slate-900" suppressHydrationWarning>
         <header className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-2">
             <span className="text-2xl">🧾</span>
