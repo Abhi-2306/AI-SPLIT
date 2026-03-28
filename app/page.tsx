@@ -21,6 +21,7 @@ type BillSummary = {
   participantCount: number;
   total: number;
   createdAt: string;
+  isOwner: boolean;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -182,11 +183,16 @@ export default function HomePage() {
                     <h3 className="font-semibold text-slate-800 dark:text-slate-100 truncate">
                       {bill.title}
                     </h3>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_COLORS[bill.status] ?? STATUS_COLORS.draft}`}
-                    >
-                      {STATUS_LABELS[bill.status] ?? bill.status}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {!bill.isOwner && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                          Shared
+                        </span>
+                      )}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[bill.status] ?? STATUS_COLORS.draft}`}>
+                        {STATUS_LABELS[bill.status] ?? bill.status}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
                     <span className="font-semibold text-slate-700 dark:text-slate-300">
@@ -215,13 +221,15 @@ export default function HomePage() {
                     >
                       {bill.status === "draft" ? "Continue" : "Edit"}
                     </Link>
-                    <button
-                      onClick={() => setConfirmBill(bill)}
-                      className="ml-auto text-xs px-2.5 py-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
-                      title="Delete bill"
-                    >
-                      Delete
-                    </button>
+                    {bill.isOwner && (
+                      <button
+                        onClick={() => setConfirmBill(bill)}
+                        className="ml-auto text-xs px-2.5 py-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                        title="Delete bill"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

@@ -17,8 +17,7 @@ export async function GET() {
 
     const { data: billRows, error } = await supabase
       .from("bills")
-      .select("id, title, currency, status, tax, tip, created_at")
-      .eq("user_id", user.id)
+      .select("id, title, currency, status, tax, tip, created_at, user_id")
       .order("created_at", { ascending: false });
     if (error) throw error;
 
@@ -50,6 +49,7 @@ export async function GET() {
       participantCount: participantCounts[b.id] ?? 0,
       total: (subtotals[b.id] ?? 0) + (Number(b.tax) || 0) + (Number(b.tip) || 0),
       createdAt: b.created_at,
+      isOwner: b.user_id === user.id,
     }));
 
     return successResponse(summaries);
@@ -63,6 +63,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = CreateBillSchema.parse(body);
     const bill = await container.createBill.execute(input);
+
+    // Log bill_created event for persistent activity feed (non-fatal)
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("activity_log").insert({
+          user_id: user.id,
+          event_type: "bill_created",
+          bill_id: bill.id,
+          bill_title: bill.title,
+          currency: bill.currency,
+          total: 0,
+        });
+      }
+    } catch {
+      // Non-fatal: activity log failure should not block bill creation
+    }
+
     return successResponse(bill, 201);
   } catch (error) {
     return handleApiError(error);

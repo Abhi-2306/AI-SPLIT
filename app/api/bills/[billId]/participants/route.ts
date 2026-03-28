@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { container } from "@/composition-root/container";
 import { successResponse, handleApiError } from "@/lib/utils/apiHelpers";
+import { createClient } from "@/lib/supabase/server";
 
 type Params = { params: Promise<{ billId: string }> };
 
@@ -20,6 +21,32 @@ export async function POST(request: NextRequest, { params }: Params) {
       name: input.name,
       userId: input.userId ?? null,
     });
+
+    // Log bill_shared for the linked user so they see this bill in their activity
+    // even after the bill is deleted (persistent log vs. live table query)
+    if (input.userId) {
+      try {
+        const supabase = await createClient();
+        const { data: bill } = await supabase
+          .from("bills")
+          .select("title, currency")
+          .eq("id", billId)
+          .single();
+        if (bill) {
+          await supabase.from("activity_log").insert({
+            user_id: input.userId,
+            event_type: "bill_shared",
+            bill_id: billId,
+            bill_title: bill.title,
+            currency: bill.currency,
+            total: 0,
+          });
+        }
+      } catch {
+        // Non-fatal
+      }
+    }
+
     return successResponse(participant, 201);
   } catch (error) {
     return handleApiError(error);

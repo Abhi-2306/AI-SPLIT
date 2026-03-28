@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFriendStore, type FriendDto } from "@/presentation/store/friendStore";
 import { useUiStore } from "@/presentation/store/uiStore";
@@ -8,6 +8,7 @@ import { Button } from "@/presentation/components/ui/Button";
 import { Input } from "@/presentation/components/ui/Input";
 import { formatAmount } from "@/lib/utils/currency";
 import { ROUTES } from "@/lib/constants/routes";
+import { ConfirmDialog } from "@/presentation/components/ui/ConfirmDialog";
 
 type DebtSummary = {
   netBalance: number;
@@ -31,13 +32,15 @@ type Settlement = {
   paidByMe: boolean;
 };
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `Today · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  if (hours < 48) return `Yesterday · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function FriendDebtCard({ friend }: { friend: FriendDto }) {
@@ -49,7 +52,8 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
   const [settleDirection, setSettleDirection] = useState<"i_paid" | "they_paid">("i_paid");
   const [settleNote, setSettleNote] = useState("");
   const [settling, setSettling] = useState(false);
-  const settlementsLoaded = useRef(false);
+  const [confirmSettlement, setConfirmSettlement] = useState<Settlement | null>(null);
+  const [deletingSettlementId, setDeletingSettlementId] = useState<string | null>(null);
   const { addToast } = useUiStore();
 
   function loadDebt() {
@@ -68,17 +72,11 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
 
   useEffect(() => {
     loadDebt();
+    loadSettlements();
     // Refresh when a bill is deleted from the home page
     window.addEventListener("bill-deleted", loadDebt);
     return () => window.removeEventListener("bill-deleted", loadDebt);
   }, [friend.userId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (expanded && !settlementsLoaded.current) {
-      settlementsLoaded.current = true;
-      loadSettlements();
-    }
-  }, [expanded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function openModal() {
     const abs = debt ? Math.abs(debt.netBalance) : 0;
@@ -114,6 +112,26 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
       addToast(err instanceof Error ? err.message : "Failed to record payment", "error");
     } finally {
       setSettling(false);
+    }
+  }
+
+  async function handleDeleteSettlement() {
+    if (!confirmSettlement) return;
+    setDeletingSettlementId(confirmSettlement.id);
+    try {
+      const res = await fetch(
+        `/api/friends/${friend.userId}/settlements?id=${confirmSettlement.id}`,
+        { method: "DELETE" }
+      );
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? "Failed to delete payment");
+      setSettlements((prev) => prev.filter((s) => s.id !== confirmSettlement.id));
+      loadDebt();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Failed to delete payment", "error");
+    } finally {
+      setDeletingSettlementId(null);
+      setConfirmSettlement(null);
     }
   }
 
@@ -207,8 +225,12 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
                 <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Payments recorded</p>
                 <div className="flex flex-col gap-1.5">
                   {settlements.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500 dark:text-slate-400 text-xs">{timeAgo(s.settledAt)}</span>
+                    <button
+                      key={s.id}
+                      onClick={() => s.paidByMe && setConfirmSettlement(s)}
+                      className={`w-full flex items-center justify-between text-sm rounded-lg px-2 py-1.5 -mx-2 transition-colors ${s.paidByMe ? "hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer" : "cursor-default"}`}
+                    >
+                      <span className="text-slate-500 dark:text-slate-400 text-xs">{formatDate(s.settledAt)}</span>
                       <div className="flex items-center gap-2">
                         {s.note && (
                           <span className="text-xs text-slate-400 italic truncate max-w-[100px]">{s.note}</span>
@@ -219,7 +241,7 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
                             : `${friend.displayName.split(" ")[0]} paid ${formatAmount(s.amount, s.currency)}`}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -227,6 +249,16 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmSettlement !== null}
+        title="Delete payment?"
+        message={`Remove the record of ${confirmSettlement ? formatAmount(confirmSettlement.amount, confirmSettlement.currency) : ""} paid to ${friend.displayName}? This will affect your balance.`}
+        confirmLabel="Delete"
+        loading={deletingSettlementId !== null}
+        onConfirm={handleDeleteSettlement}
+        onCancel={() => setConfirmSettlement(null)}
+      />
 
       {/* Settle Up Modal */}
       {showModal && (

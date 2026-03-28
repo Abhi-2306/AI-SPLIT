@@ -55,10 +55,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
       }
     }
 
-    if (myParticipantByBill.size === 0) {
-      return successResponse({ netBalance: 0, currency: null, bills: [] });
-    }
-
     // Fallback map for finding friend's participant when their userId=NULL on the row
     const friendParticipantFromCreation = new Map(
       (friendCreatedBills ?? [])

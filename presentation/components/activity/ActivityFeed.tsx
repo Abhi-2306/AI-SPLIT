@@ -23,7 +23,7 @@ function timeAgo(dateStr: string): string {
 }
 
 function ItemAvatar({ item }: { item: ActivityItem }) {
-  if (item.type === "friend_added") {
+  if (item.type === "friend_added" || item.type === "settlement_paid") {
     if (item.friendAvatarUrl) {
       return (
         <img
@@ -69,6 +69,18 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       const count = item.participantCount ?? 0;
       sub = `${formatAmount(item.totalAmount, item.currency)} · ${count} person${count !== 1 ? "s" : ""}`;
     }
+  } else if (item.type === "bill_deleted") {
+    headline = (
+      <>
+        Deleted{" "}
+        <span className="font-semibold text-slate-800 dark:text-slate-100">
+          {item.billTitle}
+        </span>
+      </>
+    );
+    if (item.totalAmount !== undefined && item.currency && item.totalAmount > 0) {
+      sub = formatAmount(item.totalAmount, item.currency);
+    }
   } else if (item.type === "bill_shared") {
     headline = (
       <>
@@ -79,6 +91,25 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         >
           {item.billTitle}
         </Link>
+      </>
+    );
+    if (item.totalAmount !== undefined && item.currency) {
+      sub = formatAmount(item.totalAmount, item.currency);
+    }
+  } else if (item.type === "settlement_paid") {
+    headline = item.isOwner ? (
+      <>
+        You paid{" "}
+        <span className="font-semibold text-slate-800 dark:text-slate-100">
+          {item.friendName}
+        </span>
+      </>
+    ) : (
+      <>
+        <span className="font-semibold text-slate-800 dark:text-slate-100">
+          {item.friendName}
+        </span>{" "}
+        paid you
       </>
     );
     if (item.totalAmount !== undefined && item.currency) {
@@ -113,14 +144,24 @@ export function ActivityFeed() {
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  function loadActivity() {
     fetch("/api/activity")
       .then((r) => r.json())
-      .then((j) => {
-        if (j.success) setItems(j.data);
-      })
+      .then((j) => { if (j.success) setItems(j.data); })
       .catch(() => null)
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadActivity();
+    window.addEventListener("bill-deleted", loadActivity);
+    window.addEventListener("bill-created", loadActivity);
+    window.addEventListener("settlement-recorded", loadActivity);
+    return () => {
+      window.removeEventListener("bill-deleted", loadActivity);
+      window.removeEventListener("bill-created", loadActivity);
+      window.removeEventListener("settlement-recorded", loadActivity);
+    };
   }, []);
 
   if (loading) {
