@@ -18,6 +18,7 @@ export async function GET() {
     const { data: billRows, error } = await supabase
       .from("bills")
       .select("id, title, currency, status, tax, tip, created_at")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (error) throw error;
 
