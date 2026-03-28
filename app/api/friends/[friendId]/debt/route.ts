@@ -70,6 +70,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       friendAmount: number;
       netEffect: number;
       currency: string;
+      createdAt: string;
     }> = [];
 
     for (const [billId, myParticipantId] of myParticipantByBill.entries()) {
@@ -116,6 +117,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
         friendAmount: friendEntry.total,
         netEffect: Math.round(netEffect * 100) / 100,
         currency: bill.currency,
+        createdAt: bill.createdAt,
       });
     }
 

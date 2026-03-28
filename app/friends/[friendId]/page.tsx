@@ -27,6 +27,7 @@ type DebtSummary = {
     friendAmount: number;
     netEffect: number;
     currency: string;
+    createdAt: string;
   }>;
 };
 
@@ -213,64 +214,76 @@ export default function FriendDetailPage({ params }: Params) {
           </div>
         </div>
 
-        {/* Bills */}
-        {debt && debt.bills.length > 0 && (
-          <div className="mb-6">
-            <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Shared Bills</h2>
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
-              {debt.bills.map((b) => (
-                <Link
-                  key={b.billId}
-                  href={ROUTES.billSummary(b.billId)}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                >
-                  <span className="text-sm text-slate-700 dark:text-slate-200 truncate mr-3">{b.billTitle}</span>
-                  <span className={`text-sm font-semibold flex-shrink-0 ${b.netEffect > 0 ? "text-green-600" : b.netEffect < 0 ? "text-red-500" : "text-slate-400"}`}>
-                    {b.netEffect > 0
-                      ? `+${formatAmount(b.netEffect, b.currency)}`
-                      : b.netEffect < 0
-                      ? `−${formatAmount(Math.abs(b.netEffect), b.currency)}`
-                      : "even"}
-                  </span>
-                </Link>
-              ))}
+        {/* Bills + Settlements side by side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Shared Bills */}
+          <div className="flex flex-col">
+            <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">
+              Shared Bills{debt && debt.bills.length > 0 ? ` (${debt.bills.length})` : ""}
+            </h2>
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden flex-1">
+              {!debt || debt.bills.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">No shared bills yet.</p>
+              ) : (
+                <div className="overflow-y-auto max-h-72 divide-y divide-slate-100 dark:divide-slate-700">
+                  {debt.bills.map((b) => (
+                    <Link
+                      key={b.billId}
+                      href={ROUTES.billSummary(b.billId)}
+                      className="flex items-start justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                    >
+                      <div className="min-w-0 mr-3">
+                        <p className="text-sm text-slate-700 dark:text-slate-200 truncate">{b.billTitle}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{formatDate(b.createdAt)}</p>
+                      </div>
+                      <span className={`text-sm font-semibold flex-shrink-0 ${b.netEffect > 0 ? "text-green-600" : b.netEffect < 0 ? "text-red-500" : "text-slate-400"}`}>
+                        {b.netEffect > 0
+                          ? `+${formatAmount(b.netEffect, b.currency)}`
+                          : b.netEffect < 0
+                          ? `−${formatAmount(Math.abs(b.netEffect), b.currency)}`
+                          : "even"}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        )}
 
-        {/* Settlements */}
-        <div>
-          <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Payment History</h2>
-          {settlements.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">No payments recorded yet.</p>
-          ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
-              {settlements.map((s) => (
-                <div
-                  key={s.id}
-                  onClick={() => s.paidByMe && setConfirmSettlement(s)}
-                  className={`flex items-center justify-between px-4 py-3 ${s.paidByMe ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50" : ""} transition-colors`}
-                >
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium ${s.paidByMe ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
-                      {s.paidByMe
-                        ? `You paid ${friendFirstName}`
-                        : `${friendFirstName} paid you`}
-                    </p>
-                    {s.note && (
-                      <p className="text-xs text-slate-400 italic truncate mt-0.5">{s.note}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                      {formatAmount(s.amount, s.currency)}
-                    </span>
-                    <span className="text-xs text-slate-400 whitespace-nowrap">{formatDate(s.settledAt)}</span>
-                  </div>
+          {/* Payment History */}
+          <div className="flex flex-col">
+            <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">
+              Payment History{settlements.length > 0 ? ` (${settlements.length})` : ""}
+            </h2>
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden flex-1">
+              {settlements.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">No payments recorded yet.</p>
+              ) : (
+                <div className="overflow-y-auto max-h-72 divide-y divide-slate-100 dark:divide-slate-700">
+                  {settlements.map((s) => (
+                    <div
+                      key={s.id}
+                      onClick={() => s.paidByMe && setConfirmSettlement(s)}
+                      className={`flex items-start justify-between px-4 py-3 ${s.paidByMe ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50" : ""} transition-colors`}
+                    >
+                      <div className="min-w-0 mr-3">
+                        <p className={`text-sm font-medium ${s.paidByMe ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                          {s.paidByMe ? `You paid ${friendFirstName}` : `${friendFirstName} paid you`}
+                        </p>
+                        {s.note && (
+                          <p className="text-xs text-slate-400 italic truncate mt-0.5">{s.note}</p>
+                        )}
+                        <p className="text-xs text-slate-400 mt-0.5">{formatDate(s.settledAt)}</p>
+                      </div>
+                      <span className="text-sm font-semibold flex-shrink-0 text-slate-700 dark:text-slate-200">
+                        {formatAmount(s.amount, s.currency)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 

@@ -97,8 +97,11 @@ node scripts/create-test-user.mjs email@example.com pass  # custom credentials
 ```
 NEXT_PUBLIC_SUPABASE_URL=        # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=   # Supabase anon/public key
-SUPABASE_SERVICE_ROLE_KEY=       # Service role key (only for scripts, never exposed to browser)
+SUPABASE_SERVICE_ROLE_KEY=       # Service role key (server-only: admin client + scripts)
 GROQ_API_KEY=                    # Groq API key for OCR
+GMAIL_USER=                      # Gmail address used as SMTP sender
+GMAIL_APP_PASSWORD=              # Gmail App Password (not account password)
+NEXT_PUBLIC_SITE_URL=            # Full URL used to build links in emails (e.g. https://your-app.vercel.app)
 ```
 
 ## Project Roadmap
@@ -131,13 +134,17 @@ GROQ_API_KEY=                    # Groq API key for OCR
 - Friend request API: `GET/POST /api/friends`, `GET /api/friends/requests`, `PATCH /api/friends/requests/[id]`, `GET /api/friends/[friendId]/debt`
 - Bills RLS updated to allow participant-linked users to see shared bills
 
-### 🔜 Iteration 4 — Settle Up + Email Notifications
-- **Settle up**: enter a specific amount or settle full balance with any friend; creates a settlement record that offsets the running debt
-- Settlement history log per friendship
-- Payment deep-links alongside settle (PayPal / Venmo / UPI URL schemes — no Stripe yet)
-- **Email notifications** via Resend: triggered on bill creation, split update, and settlement
-  - Each participant gets their individual share shown prominently + full bill summary below
-- Optional Slack / WhatsApp webhook for power users
+### ✅ Iteration 4 — Settle Up + Email Notifications
+- **Settle up**: `/friends/[friendId]` detail page with balance, shared bills, payment history, settle up modal; settlement creates a record offsetting running debt
+- Friend detail page replaces the old expandable dropdown on `/friends`
+- Settlement deletion (own settlements only) with confirmation dialog
+- **Email notifications** via Nodemailer (Gmail App Password): 3 triggers:
+  - Settlement recorded → recipient gets "X paid you $Y" email
+  - Friend request accepted → requester gets "X accepted your friend request" email
+  - "Notify Participants" button on summary page → each linked participant gets per-person item breakdown with their share/subtotal/tax/tip
+- `lib/supabase/admin.ts` — service-role client for fetching `auth.users.email` of other users
+- `lib/email/index.ts` — Nodemailer transporter + HTML template functions
+- Activity feed sidebar is sticky and scrollable (no longer grows the page)
 
 ### 🔜 Iteration 5 — Analytics + AI Intelligence
 - Analytics dashboard: spending per friend, per category, monthly trends
