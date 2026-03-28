@@ -66,7 +66,12 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
       .catch(() => null);
   }
 
-  useEffect(() => { loadDebt(); }, [friend.userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadDebt();
+    // Refresh when a bill is deleted from the home page
+    window.addEventListener("bill-deleted", loadDebt);
+    return () => window.removeEventListener("bill-deleted", loadDebt);
+  }, [friend.userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (expanded && !settlementsLoaded.current) {

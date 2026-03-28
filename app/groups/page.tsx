@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/presentation/components/ui/Button";
 import { Input } from "@/presentation/components/ui/Input";
+import { ConfirmDialog } from "@/presentation/components/ui/ConfirmDialog";
 import { useUiStore } from "@/presentation/store/uiStore";
 import { ROUTES } from "@/lib/constants/routes";
 
@@ -45,6 +46,7 @@ function GroupCard({ group, onDeleted }: { group: Group; onDeleted: () => void }
   const [membersLoaded, setMembersLoaded] = useState(false);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
   const { addToast } = useUiStore();
@@ -102,7 +104,6 @@ function GroupCard({ group, onDeleted }: { group: Group; onDeleted: () => void }
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete group "${group.name}"? This cannot be undone.`)) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/groups/${group.id}`, { method: "DELETE" });
@@ -112,6 +113,7 @@ function GroupCard({ group, onDeleted }: { group: Group; onDeleted: () => void }
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Failed to delete group", "error");
       setDeleting(false);
+      setConfirmDelete(false);
     }
   }
 
@@ -136,8 +138,7 @@ function GroupCard({ group, onDeleted }: { group: Group; onDeleted: () => void }
           </button>
           {group.isOwner && (
             <button
-              onClick={handleDelete}
-              disabled={deleting}
+              onClick={() => setConfirmDelete(true)}
               className="text-xs px-2 py-1 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
             >
               Delete
@@ -214,6 +215,16 @@ function GroupCard({ group, onDeleted }: { group: Group; onDeleted: () => void }
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete group?"
+        message={`"${group.name}" and its member list will be permanently deleted.`}
+        confirmLabel="Delete"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/presentation/components/ui/Button";
+import { ConfirmDialog } from "@/presentation/components/ui/ConfirmDialog";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatAmount } from "@/lib/utils/currency";
 import { ActivityFeed } from "@/presentation/components/activity/ActivityFeed";
@@ -40,6 +41,7 @@ export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmBill, setConfirmBill] = useState<BillSummary | null>(null);
 
   useEffect(() => {
     fetch("/api/bills")
@@ -61,17 +63,20 @@ export default function HomePage() {
     router.refresh();
   }
 
-  async function handleDelete(bill: BillSummary) {
-    if (!confirm(`Delete "${bill.title}"? This cannot be undone.`)) return;
-    setDeletingId(bill.id);
+  async function handleDelete() {
+    if (!confirmBill) return;
+    setDeletingId(confirmBill.id);
     try {
-      const res = await fetch(`/api/bills/${bill.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/bills/${confirmBill.id}`, { method: "DELETE" });
       const json = await res.json();
       if (json.success) {
-        setBills((prev) => prev.filter((b) => b.id !== bill.id));
+        setBills((prev) => prev.filter((b) => b.id !== confirmBill.id));
+        // Notify the friends page to refresh debt balances
+        window.dispatchEvent(new CustomEvent("bill-deleted"));
       }
     } finally {
       setDeletingId(null);
+      setConfirmBill(null);
     }
   }
 
@@ -205,12 +210,11 @@ export default function HomePage() {
                       {bill.status === "draft" ? "Continue" : "Edit"}
                     </Link>
                     <button
-                      onClick={() => handleDelete(bill)}
-                      disabled={deletingId === bill.id}
-                      className="ml-auto text-xs px-2.5 py-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-50"
+                      onClick={() => setConfirmBill(bill)}
+                      className="ml-auto text-xs px-2.5 py-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
                       title="Delete bill"
                     >
-                      {deletingId === bill.id ? "…" : "Delete"}
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -218,6 +222,16 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+      <ConfirmDialog
+        open={confirmBill !== null}
+        title="Delete bill?"
+        message={`"${confirmBill?.title}" will be permanently deleted. Any debt it contributed to will also be removed from your friends' balances.`}
+        confirmLabel="Delete"
+        loading={deletingId !== null}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmBill(null)}
+      />
 
         {/* Activity feed */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
