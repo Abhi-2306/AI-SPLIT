@@ -29,17 +29,17 @@ export async function POST(request: NextRequest, { params }: Params) {
         const supabase = await createClient();
         const { data: bill } = await supabase
           .from("bills")
-          .select("title, currency")
+          .select("title, currency, user_id")
           .eq("id", billId)
           .single();
-        if (bill) {
+        // Don't log bill_shared for the creator — they already have bill_created
+        if (bill && bill.user_id !== input.userId) {
           await supabase.from("activity_log").insert({
             user_id: input.userId,
             event_type: "bill_shared",
             bill_id: billId,
             bill_title: bill.title,
             currency: bill.currency,
-            total: 0,
           });
         }
       } catch {

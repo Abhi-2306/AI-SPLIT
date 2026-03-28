@@ -65,9 +65,14 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         </Link>
       </>
     );
-    if (item.totalAmount !== undefined && item.currency) {
-      const count = item.participantCount ?? 0;
-      sub = `${formatAmount(item.totalAmount, item.currency)} · ${count} person${count !== 1 ? "s" : ""}`;
+    if (item.userShare !== undefined && item.currency) {
+      if (item.userShare > 0) {
+        sub = `You are owed ${formatAmount(item.userShare, item.currency)}`;
+      } else if (item.userShare < 0) {
+        sub = `You owe ${formatAmount(-item.userShare, item.currency)}`;
+      } else {
+        sub = "You are settled up";
+      }
     }
   } else if (item.type === "bill_deleted") {
     headline = (
@@ -93,8 +98,14 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         </Link>
       </>
     );
-    if (item.totalAmount !== undefined && item.currency) {
-      sub = formatAmount(item.totalAmount, item.currency);
+    if (item.userShare !== undefined && item.currency) {
+      if (item.userShare > 0) {
+        sub = `You are owed ${formatAmount(item.userShare, item.currency)}`;
+      } else if (item.userShare < 0) {
+        sub = `You owe ${formatAmount(-item.userShare, item.currency)}`;
+      } else {
+        sub = "You are settled up";
+      }
     }
   } else if (item.type === "settlement_paid") {
     headline = item.isOwner ? (

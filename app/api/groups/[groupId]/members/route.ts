@@ -16,14 +16,24 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { data, error } = await supabase
       .from("group_members")
-      .select("user_id, joined_at, profiles(display_name, avatar_url)")
+      .select("user_id, joined_at")
       .eq("group_id", groupId)
       .order("joined_at", { ascending: true });
     if (error) throw error;
 
+    const rows = data ?? [];
+    const userIds = rows.map((m) => m.user_id);
+
+    type ProfileRow = { id: string; display_name: string; avatar_url: string | null };
+    let profileMap = new Map<string, ProfileRow>();
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase.rpc("get_users_display_info", { user_ids: userIds });
+      ((profiles ?? []) as ProfileRow[]).forEach((p) => profileMap.set(p.id, p));
+    }
+
     return successResponse(
-      (data ?? []).map((m) => {
-        const profile = m.profiles as unknown as { display_name: string | null; avatar_url: string | null } | null;
+      rows.map((m) => {
+        const profile = profileMap.get(m.user_id);
         return {
           userId: m.user_id,
           displayName: profile?.display_name ?? "Unknown",

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { errorResponse, handleApiError, successResponse } from "@/lib/utils/apiHelpers";
+import { container } from "@/composition-root/container";
 
 export type ActivityItem = {
   id: string;
@@ -13,6 +14,7 @@ export type ActivityItem = {
   isOwner?: boolean;   // for settlements: true = I paid, false = I received
   friendName?: string;
   friendAvatarUrl?: string | null;
+  userShare?: number;  // net position on bill: positive = others owe user, negative = user owes
 };
 
 // GET /api/activity
@@ -165,6 +167,41 @@ export async function GET() {
         friendName: profile?.display_name ?? "Unknown",
         friendAvatarUrl: profile?.avatar_url ?? null,
       });
+    }
+
+    // Enrich bill_created / bill_shared items with the user's net position on each bill
+    const billItems = items.filter(
+      (i) => (i.type === "bill_created" || i.type === "bill_shared") && i.billId
+    );
+    if (billItems.length > 0) {
+      const netResults = await Promise.all(
+        billItems.map(async (item) => {
+          try {
+            const [bill, splitResult] = await Promise.all([
+              container.getBill.execute(item.billId!),
+              container.calculateSplit.execute(item.billId!).catch(() => null),
+            ]);
+            if (!bill || !splitResult || bill.status === "draft") return null;
+            const userParticipant = bill.participants.find((p) => p.userId === user.id);
+            if (!userParticipant) return null;
+            let net = 0;
+            for (const s of splitResult.settlements) {
+              if (s.to.id === userParticipant.id) net += s.amount;
+              if (s.from.id === userParticipant.id) net -= s.amount;
+            }
+            return { id: item.id, net: Math.round(net * 100) / 100 };
+          } catch {
+            return null;
+          }
+        })
+      );
+      const netById = new Map(
+        netResults.filter(Boolean).map((r) => [r!.id, r!.net])
+      );
+      for (const item of items) {
+        const net = netById.get(item.id);
+        if (net !== undefined) item.userShare = net;
+      }
     }
 
     // Merge and sort newest first
