@@ -22,6 +22,10 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
   const [loading, setLoading] = useState(false);
   const [showFriendPicker, setShowFriendPicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; displayName: string } | null>(null);
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const [groups, setGroups] = useState<{ id: string; name: string; memberCount: number }[]>([]);
+  const [groupsLoaded, setGroupsLoaded] = useState(false);
+  const [addingGroup, setAddingGroup] = useState<string | null>(null);
 
   useEffect(() => {
     loadFriends();
@@ -56,6 +60,44 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
       await addParticipant(billId, friend.displayName, friend.userId);
     } catch (err: unknown) {
       addToast(err instanceof Error ? err.message : "Failed to add friend", "error");
+    }
+  }
+
+  function openGroupPicker() {
+    if (!groupsLoaded) {
+      fetch("/api/groups")
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.success) setGroups(j.data);
+          setGroupsLoaded(true);
+        })
+        .catch(() => setGroupsLoaded(true));
+    }
+    setShowGroupPicker((v) => !v);
+  }
+
+  async function handleAddGroup(group: { id: string; name: string }) {
+    setShowGroupPicker(false);
+    setAddingGroup(group.id);
+    try {
+      const res = await fetch(`/api/groups/${group.id}/members`);
+      const json = await res.json();
+      if (!json.success) throw new Error("Failed to load group members");
+
+      const members = json.data as { userId: string; displayName: string; avatarUrl: string | null; isMe: boolean }[];
+      const toAdd = members.filter((m) => !linkedUserIds.has(m.userId));
+
+      if (toAdd.length === 0) {
+        addToast("All members are already in this bill", "info");
+        return;
+      }
+
+      await Promise.all(toAdd.map((m) => addParticipant(billId, m.displayName, m.userId)));
+      addToast(`Added ${toAdd.length} member${toAdd.length !== 1 ? "s" : ""} from ${group.name}`, "success");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Failed to add group members", "error");
+    } finally {
+      setAddingGroup(null);
     }
   }
 
@@ -125,6 +167,37 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
             )}
           </div>
         )}
+
+        <div className="relative">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={openGroupPicker}
+            loading={addingGroup !== null}
+          >
+            Groups
+          </Button>
+          {showGroupPicker && (
+            <div className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg min-w-[200px] py-1">
+              {!groupsLoaded ? (
+                <p className="px-3 py-2 text-sm text-slate-400">Loading...</p>
+              ) : groups.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-slate-400">No groups yet</p>
+              ) : (
+                groups.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => handleAddGroup(g)}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    <span className="font-medium">{g.name}</span>
+                    <span className="text-xs text-slate-400 ml-1">· {g.memberCount} member{g.memberCount !== 1 ? "s" : ""}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {participants.length === 0 ? (
