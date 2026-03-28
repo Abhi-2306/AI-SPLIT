@@ -248,12 +248,12 @@ export default function HomePage() {
       />
 
         {/* Activity feed */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-slate-700 dark:text-slate-200">Recent Activity</h2>
+        <div className="sticky top-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col max-h-[calc(100vh-6rem)]">
+          <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3 flex-shrink-0">Recent Activity</h2>
+          <div className="overflow-y-auto flex-1 -mx-1 px-1">
+            <ActivityFeed />
           </div>
-          <ActivityFeed />
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 text-center">
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 text-center flex-shrink-0">
             <button
               onClick={handleSignOut}
               className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"

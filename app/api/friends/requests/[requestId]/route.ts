@@ -1,7 +1,9 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { successResponse, errorResponse, handleApiError } from "@/lib/utils/apiHelpers";
+import { sendEmail, friendAcceptedEmailHtml } from "@/lib/email";
 
 type Params = { params: Promise<{ requestId: string }> };
 
@@ -30,6 +32,29 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         }
         throw error;
       }
+
+      // Email the requester (non-fatal)
+      try {
+        const { data: reqRow } = await supabase
+          .from("friend_requests").select("from_user").eq("id", requestId).single();
+        if (reqRow) {
+          const admin = createAdminClient();
+          const [senderRes, acceptorProfile] = await Promise.all([
+            admin.auth.admin.getUserById(reqRow.from_user),
+            supabase.rpc("get_users_display_info", { user_ids: [user.id] }),
+          ]);
+          const senderEmail = senderRes.data.user?.email;
+          const acceptorName = (acceptorProfile.data as { display_name: string }[] | null)?.[0]?.display_name ?? "Someone";
+          if (senderEmail) {
+            await sendEmail(
+              senderEmail,
+              `${acceptorName} accepted your friend request`,
+              friendAcceptedEmailHtml(acceptorName)
+            );
+          }
+        }
+      } catch { /* Non-fatal */ }
+
       return successResponse({ status: "accepted" });
     } else {
       const { error } = await supabase

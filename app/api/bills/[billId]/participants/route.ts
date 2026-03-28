@@ -41,6 +41,7 @@ export async function POST(request: NextRequest, { params }: Params) {
             bill_title: bill.title,
             currency: bill.currency,
           });
+
         }
       } catch {
         // Non-fatal

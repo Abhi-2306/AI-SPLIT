@@ -1,7 +1,9 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { successResponse, errorResponse, handleApiError } from "@/lib/utils/apiHelpers";
+import { sendEmail, settlementEmailHtml } from "@/lib/email";
 
 type Params = { params: Promise<{ friendId: string }> };
 
@@ -38,6 +40,25 @@ export async function POST(request: NextRequest, { params }: Params) {
       .single();
 
     if (error) throw error;
+
+    // Email the recipient (non-fatal)
+    try {
+      const admin = createAdminClient();
+      const [payerRes, recipientRes, payerProfile] = await Promise.all([
+        admin.auth.admin.getUserById(from_user),
+        admin.auth.admin.getUserById(to_user),
+        supabase.rpc("get_users_display_info", { user_ids: [from_user] }),
+      ]);
+      const recipientEmail = recipientRes.data.user?.email;
+      const payerName = (payerProfile.data as { display_name: string }[] | null)?.[0]?.display_name ?? "Someone";
+      if (recipientEmail) {
+        await sendEmail(
+          recipientEmail,
+          `${payerName} paid you ${amount} ${currency}`,
+          settlementEmailHtml(payerName, `${amount} ${currency}`, note)
+        );
+      }
+    } catch { /* Non-fatal */ }
 
     return successResponse(
       {

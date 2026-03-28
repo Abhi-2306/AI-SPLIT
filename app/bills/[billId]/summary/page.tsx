@@ -41,6 +41,8 @@ export default function SummaryPage({ params }: Params) {
   const { currentBill, splitResult, loadBill, calculateSplit } = useBillStore();
   const { addToast } = useUiStore();
   const [copying, setCopying] = useState(false);
+  const [notifying, setNotifying] = useState(false);
+  const [notifiedCount, setNotifiedCount] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -49,6 +51,29 @@ export default function SummaryPage({ params }: Params) {
     }
     load().catch(console.error);
   }, [billId, loadBill, calculateSplit]);
+
+  async function handleNotify() {
+    setNotifying(true);
+    try {
+      const res = await fetch(`/api/bills/${billId}/notify`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        setNotifiedCount(json.data.notified);
+        addToast(
+          json.data.notified > 0
+            ? `Notified ${json.data.notified} participant${json.data.notified !== 1 ? "s" : ""}`
+            : "No linked participants to notify",
+          "success"
+        );
+      } else {
+        addToast(json.error?.message ?? "Failed to send notifications", "error");
+      }
+    } catch {
+      addToast("Failed to send notifications", "error");
+    } finally {
+      setNotifying(false);
+    }
+  }
 
   async function handleCopy() {
     if (!splitResult || !currentBill) return;
@@ -91,6 +116,9 @@ export default function SummaryPage({ params }: Params) {
           </Button>
           <Button variant="secondary" onClick={handleCopy} loading={copying}>
             Copy Summary
+          </Button>
+          <Button onClick={handleNotify} loading={notifying}>
+            {notifiedCount !== null ? `✓ Notified ${notifiedCount}` : "Notify Participants"}
           </Button>
           <Button
             variant="secondary"
