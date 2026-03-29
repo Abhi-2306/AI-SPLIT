@@ -33,3 +33,6 @@ export const MAX_ITEMS = 100;
 // AI receipt scanning — per-user daily cap
 // Bypass: set OCR_BYPASS_USER_IDS="id1,id2" in .env.local / Vercel env vars
 export const OCR_DAILY_LIMIT = 5;
+
+// AI Smart Split suggestions — separate daily cap from OCR
+export const AI_DAILY_LIMIT = 3;
