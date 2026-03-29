@@ -13,6 +13,10 @@ import { ActivityFeed } from "@/presentation/components/activity/ActivityFeed";
 
 type CurrentUser = { displayName: string; avatarUrl: string | null };
 
+type BillStats = {
+  byCurrency: Record<string, { total: number; myShare: number }>;
+};
+
 type BillSummary = {
   id: string;
   title: string;
@@ -44,6 +48,7 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmBill, setConfirmBill] = useState<BillSummary | null>(null);
+  const [stats, setStats] = useState<BillStats | null>(null);
   const { addToast } = useUiStore();
 
   useEffect(() => {
@@ -52,6 +57,11 @@ export default function HomePage() {
       .then((json) => { if (json.success) setBills(json.data); })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    fetch("/api/bills/stats")
+      .then((r) => r.json())
+      .then((json) => { if (json.success) setStats(json.data); })
+      .catch(console.error);
 
     fetch("/api/profile")
       .then((r) => r.json())
@@ -138,6 +148,36 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-slate-700 dark:text-slate-200">Your Bills</h2>
           </div>
+
+          {/* Stats bar — bills total derived from list, my spend from API */}
+          {!loading && bills.length > 0 && (() => {
+            const totalByCurrency = bills.reduce<Record<string, number>>((acc, b) => {
+              acc[b.currency] = (acc[b.currency] ?? 0) + b.total;
+              return acc;
+            }, {});
+            return (
+              <div className="flex flex-wrap gap-3 mb-4">
+                {Object.entries(totalByCurrency).map(([currency, total]) => {
+                  const myShare = stats?.byCurrency?.[currency]?.myShare;
+                  return (
+                    <div key={currency} className="flex gap-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 flex-1 min-w-[200px]">
+                      <div className="flex-1 border-r border-slate-100 dark:border-slate-700 pr-3">
+                        <p className="text-xs text-slate-400 mb-0.5">Bills total</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{formatAmount(total, currency)}</p>
+                      </div>
+                      <div className="flex-1 pl-1">
+                        <p className="text-xs text-slate-400 mb-0.5">My spend</p>
+                        {stats === null
+                          ? <div className="w-3.5 h-3.5 mt-1 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          : <p className="font-semibold text-blue-600 dark:text-blue-400 text-sm">{formatAmount(myShare ?? 0, currency)}</p>
+                        }
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Search bar */}
           {bills.length > 0 && (

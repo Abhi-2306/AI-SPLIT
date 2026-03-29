@@ -92,7 +92,9 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
         return;
       }
 
-      await Promise.all(toAdd.map((m) => addParticipant(billId, m.displayName, m.userId)));
+      for (const m of toAdd) {
+        await addParticipant(billId, m.displayName, m.userId);
+      }
       addToast(`Added ${toAdd.length} member${toAdd.length !== 1 ? "s" : ""} from ${group.name}`, "success");
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Failed to add group members", "error");
