@@ -182,10 +182,9 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
             onChange={(e) => handleModeChange(e.target.value as SplitMode)}
             className="text-xs border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {Object.entries(MODE_LABELS).map(([val, label]) => {
-              if (val === "per_unit" && item.quantity <= 1) return null;
-              return <option key={val} value={val}>{label}</option>;
-            })}
+            {Object.entries(MODE_LABELS).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -209,11 +208,6 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
               </button>
             );
           })}
-          {item.quantity === 1 && (
-            <p className="w-full text-xs text-slate-400 mt-1">
-              Need to split by units consumed? Switch to <strong>By Count</strong> mode.
-            </p>
-          )}
         </div>
       )}
 
