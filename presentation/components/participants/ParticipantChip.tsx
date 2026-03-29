@@ -75,7 +75,7 @@ export function ParticipantChip({ participant, index, billId, onRemove }: Partic
       {onRemove && (
         <button
           onClick={onRemove}
-          className="text-slate-400 hover:text-red-500 transition-colors ml-1 opacity-0 group-hover:opacity-100"
+          className="text-slate-400 hover:text-red-500 transition-colors ml-1 sm:opacity-0 sm:group-hover:opacity-100"
           title={`Remove ${participant.name}`}
         >
           ×

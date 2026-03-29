@@ -7,7 +7,7 @@ import { sendEmail, billSharedEmailHtml } from "@/lib/email";
 
 type Params = { params: Promise<{ billId: string }> };
 
-// POST /api/bills/[billId]/notify — send share emails to all linked participants
+// POST /api/bills/[billId]/notify — send share emails to participants whose split changed
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const supabase = await createClient();
@@ -26,6 +26,39 @@ export async function POST(_req: NextRequest, { params }: Params) {
       return errorResponse("INCOMPLETE", "Bill is not fully assigned yet", 400);
     }
 
+    // Load previous snapshot to diff against
+    const { data: billRow } = await supabase
+      .from("bills")
+      .select("notify_snapshot")
+      .eq("id", billId)
+      .single();
+
+    const prevSnapshot: Record<string, number> = billRow?.notify_snapshot ?? {};
+
+    // Build current totals per participant (only linked, non-zero)
+    const currentTotals: Record<string, number> = {};
+    for (const ps of splitResult.participantSplits) {
+      if (ps.participant.userId && ps.total > 0) {
+        currentTotals[ps.participant.userId] = Math.round(ps.total * 100) / 100;
+      }
+    }
+
+    // Determine who to notify:
+    // - No previous snapshot → first notification → notify everyone
+    // - Has snapshot → only notify participants whose total changed or who are new
+    const isFirstNotify = Object.keys(prevSnapshot).length === 0;
+    const toNotify = new Set<string>(
+      isFirstNotify
+        ? Object.keys(currentTotals)
+        : Object.keys(currentTotals).filter(
+            (uid) => currentTotals[uid] !== prevSnapshot[uid]
+          )
+    );
+
+    if (toNotify.size === 0) {
+      return successResponse({ notified: 0, message: "No changes since last notification" });
+    }
+
     const { data: creatorProfile } = await supabase.rpc("get_users_display_info", {
       user_ids: [user.id],
     });
@@ -35,7 +68,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     const admin = createAdminClient();
     let notified = 0;
 
-    // Net settlement map: participantId → net amount (positive = owed to them, negative = they owe)
+    // Net settlement map: participantId → net amount
     const netMap = new Map<string, number>();
     for (const s of splitResult.settlements) {
       netMap.set(s.from.id, (netMap.get(s.from.id) ?? 0) - s.amount);
@@ -44,14 +77,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
     await Promise.all(
       splitResult.participantSplits
-        .filter((ps) => ps.participant.userId && ps.participant.userId !== user.id)
+        .filter((ps) => ps.participant.userId && toNotify.has(ps.participant.userId))
         .map(async (ps) => {
           try {
             const res = await admin.auth.admin.getUserById(ps.participant.userId!);
             const email = res.data.user?.email;
             if (!email) return;
 
-            // Use net settlement if payer is set, otherwise show their gross share as negative
             const netFromSettlements = netMap.get(ps.participant.id);
             const userShare = Math.round(
               (netFromSettlements !== undefined ? netFromSettlements : -ps.total) * 100
@@ -61,9 +93,12 @@ export async function POST(_req: NextRequest, { params }: Params) {
               .filter((is) => is.amountOwed > 0)
               .map((is) => ({ name: is.item.name, amountOwed: is.amountOwed }));
 
+            const isCreator = ps.participant.userId === user.id;
             await sendEmail(
               email,
-              `${creatorName} added you to "${fullBill.title}"`,
+              isCreator
+                ? `Your share of "${fullBill.title}"`
+                : `${creatorName} shared "${fullBill.title}" with you`,
               billSharedEmailHtml(
                 creatorName,
                 fullBill.title,
@@ -81,6 +116,12 @@ export async function POST(_req: NextRequest, { params }: Params) {
           } catch { /* non-fatal per participant */ }
         })
     );
+
+    // Save current totals as new snapshot
+    await supabase
+      .from("bills")
+      .update({ notify_snapshot: currentTotals })
+      .eq("id", billId);
 
     return successResponse({ notified });
   } catch (error) {

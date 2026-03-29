@@ -146,12 +146,12 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
               Friends
             </Button>
             {showFriendPicker && (
-              <div className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg min-w-[180px] py-1">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg min-w-[180px] py-1">
                 {availableFriends.map((f) => (
                   <button
                     key={f.userId}
                     onClick={() => handleAddFriend(f)}
-                    className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer"
                   >
                     {f.avatarUrl ? (
                       <img src={f.avatarUrl} alt="" referrerPolicy="no-referrer" className="w-5 h-5 rounded-full object-cover" />
@@ -178,7 +178,7 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
             Groups
           </Button>
           {showGroupPicker && (
-            <div className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg min-w-[200px] py-1">
+            <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg min-w-[200px] py-1">
               {!groupsLoaded ? (
                 <p className="px-3 py-2 text-sm text-slate-400">Loading...</p>
               ) : groups.length === 0 ? (
@@ -188,7 +188,7 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
                   <button
                     key={g.id}
                     onClick={() => handleAddGroup(g)}
-                    className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
                   >
                     <span className="font-medium">{g.name}</span>
                     <span className="text-xs text-slate-400 ml-1">· {g.memberCount} member{g.memberCount !== 1 ? "s" : ""}</span>

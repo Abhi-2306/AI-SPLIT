@@ -168,9 +168,9 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
   return (
     <div className="py-4 border-b border-slate-100 dark:border-slate-700 last:border-0">
       {/* Item info + mode selector */}
-      <div className="flex items-start gap-4 mb-3">
-        <div className="w-44 flex-shrink-0">
-          <p className="font-medium text-slate-800 dark:text-slate-200 text-sm">{item.name}</p>
+      <div className="flex items-start gap-3 mb-3">
+        <div className="w-28 sm:w-44 flex-shrink-0">
+          <p className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">{item.name}</p>
           <p className="text-xs text-slate-500">{formatAmount(item.unitPrice, currency)} × {item.quantity}</p>
           <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
             = {formatAmount(item.totalPrice, currency)}
@@ -191,7 +191,7 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
 
       {/* Mode-specific UI */}
       {mode === "equally" && (
-        <div className="flex flex-wrap gap-2 ml-48">
+        <div className="flex flex-wrap gap-2 sm:ml-48">
           {participants.map((p, idx) => {
             const isOn = equallySelected.has(p.id);
             return (
@@ -212,7 +212,7 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
       )}
 
       {(mode === "by_count" || mode === "by_percentage" || mode === "by_shares" || mode === "by_amount") && (
-        <div className="flex flex-col gap-2 ml-48">
+        <div className="flex flex-col gap-2 sm:ml-48">
           {participants.map((p, idx) => {
             const entry = entries.find((e) => e.participantId === p.id)!;
             const placeholder =
@@ -220,11 +220,11 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
               mode === "by_count" ? `of ${subCount}` :
               mode === "by_shares" ? "shares" : currency;
             return (
-              <div key={p.id} className="flex items-center gap-3">
+              <div key={p.id} className="flex items-center gap-2">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${getParticipantColor(idx)}`}>
                   {p.name.slice(0, 1).toUpperCase()}
                 </div>
-                <span className="text-sm text-slate-700 dark:text-slate-300 w-24 truncate">{p.name}</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300 w-16 sm:w-24 truncate">{p.name}</span>
                 <input
                   type="number"
                   min={0}
@@ -233,7 +233,7 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
                   onChange={(e) => setEntryValue(p.id, parseFloat(e.target.value) || 0)}
                   onBlur={handleNumericBlur}
                   placeholder={placeholder}
-                  className="w-24 text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800"
+                  className="w-20 sm:w-24 text-sm border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800"
                 />
                 {mode === "by_shares" && entry.value > 0 && (
                   <span className="text-xs text-slate-400">
@@ -247,17 +247,17 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
           })}
           {/* Validation hints */}
           {mode === "by_percentage" && (
-            <p className={`text-xs ml-9 ${Math.abs(percentSum - 100) > 0.01 ? "text-red-500" : "text-green-600"}`}>
+            <p className={`text-xs sm:ml-9 ${Math.abs(percentSum - 100) > 0.01 ? "text-red-500" : "text-green-600"}`}>
               Total: {percentSum.toFixed(1)}% {Math.abs(percentSum - 100) > 0.01 ? "(must equal 100% to save)" : "✓ saved"}
             </p>
           )}
           {mode === "by_count" && (
-            <p className={`text-xs ml-9 ${countSum > subCount ? "text-red-500" : "text-slate-400"}`}>
+            <p className={`text-xs sm:ml-9 ${countSum > subCount ? "text-red-500" : "text-slate-400"}`}>
               {countSum} / {subCount} assigned
             </p>
           )}
           {mode === "by_amount" && (
-            <p className="text-xs ml-9 text-slate-400">
+            <p className="text-xs sm:ml-9 text-slate-400">
               Total: {formatAmount(entries.reduce((s, e) => s + e.value, 0), currency)} / {formatAmount(item.totalPrice, currency)}
             </p>
           )}
@@ -265,7 +265,7 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
       )}
 
       {mode === "per_unit" && (
-        <div className="flex flex-col gap-3 ml-48">
+        <div className="flex flex-col gap-3 sm:ml-48">
           {Array.from({ length: item.quantity }, (_, unitIndex) => {
             const assignedIds = getAssignmentsForUnit(currentBill, item.id, unitIndex);
             return (
