@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { container } from "@/composition-root/container";
 import { successResponse, errorResponse, handleApiError } from "@/lib/utils/apiHelpers";
 
 // GET /api/analytics
@@ -159,12 +160,72 @@ export async function GET() {
       currency: f.settledCurrency,
     }));
 
+    // ── 6. My personal spend per month ────────────────────────────────────
+    // Bills where I am a linked participant (assigned/settled, last 6 months)
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString();
+    const { data: myParticipantRows2 } = await supabase
+      .from("participants")
+      .select("bill_id")
+      .eq("user_id", user.id);
+
+    const myLinkedBillIds = (myParticipantRows2 ?? []).map((r) => r.bill_id);
+
+    const mySpendBillRows = myLinkedBillIds.length > 0
+      ? (await supabase
+          .from("bills")
+          .select("id, currency, created_at, status")
+          .in("id", myLinkedBillIds)
+          .in("status", ["assigned", "settled"])
+          .gte("created_at", sixMonthsAgo)
+        ).data ?? []
+      : [];
+
+    const splitResults = await Promise.allSettled(
+      mySpendBillRows.map((b) => container.calculateSplit.execute(b.id))
+    );
+
+    const mySpendMonthMap = new Map<string, { total: number; currency: string }>();
+    mySpendBillRows.forEach((bill, i) => {
+      const result = splitResults[i];
+      if (result.status !== "fulfilled" || !result.value) return;
+      const ps = result.value.participantSplits.find(
+        (p) => p.participant.userId === user.id
+      );
+      if (!ps || ps.total === 0) return;
+      const month = bill.created_at.slice(0, 7);
+      const existing = mySpendMonthMap.get(month);
+      if (!existing) {
+        mySpendMonthMap.set(month, { total: ps.total, currency: bill.currency });
+      } else {
+        existing.total += ps.total;
+      }
+    });
+
+    const monthlyMySpend = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const entry = mySpendMonthMap.get(key);
+      monthlyMySpend.push({
+        month: key,
+        total: entry ? Math.round(entry.total * 100) / 100 : 0,
+        currency: entry?.currency ?? (monthlySpending.find((m) => m.currency !== "USD")?.currency ?? "USD"),
+        billCount: 0,
+      });
+    }
+
+    const thisMonthMySpend = mySpendMonthMap.get(thisMonthKey)?.total ?? 0;
+    const totalMySpend = [...mySpendMonthMap.values()].reduce((s, e) => s + e.total, 0);
+
     return successResponse({
       monthlySpending,
+      monthlyMySpend,
       topFriends,
       summary: {
         thisMonthTotal: thisMonth?.total ?? 0,
         thisMonthCurrency: thisMonth?.currency ?? null,
+        thisMonthMySpend,
+        totalMySpend: Math.round(totalMySpend * 100) / 100,
         totalBillsCreated: (bills ?? []).length,
         totalFriends: friendIds.length,
         totalSettled,

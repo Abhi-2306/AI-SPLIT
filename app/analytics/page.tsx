@@ -21,6 +21,8 @@ type TopFriend = {
 type Summary = {
   thisMonthTotal: number;
   thisMonthCurrency: string | null;
+  thisMonthMySpend: number;
+  totalMySpend: number;
   totalBillsCreated: number;
   totalFriends: number;
   totalSettled: number;
@@ -28,9 +30,12 @@ type Summary = {
 };
 type AnalyticsData = {
   monthlySpending: MonthlyEntry[];
+  monthlyMySpend: MonthlyEntry[];
   topFriends: TopFriend[];
   summary: Summary;
 };
+
+type ViewMode = "all_bills" | "my_spend";
 
 function monthLabel(key: string): string {
   const [year, month] = key.split("-");
@@ -39,17 +44,20 @@ function monthLabel(key: string): string {
 }
 
 // Custom tooltip for the bar chart
-function CustomTooltip({ active, payload, label, displayCurrency }: {
+function CustomTooltip({ active, payload, label, displayCurrency, viewMode }: {
   active?: boolean;
   payload?: Array<{ value: number }>;
   label?: string;
   displayCurrency: string;
+  viewMode: ViewMode;
 }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow text-sm">
       <p className="font-medium text-slate-700 dark:text-slate-200">{label}</p>
-      <p className="text-blue-600 dark:text-blue-400">{formatAmount(payload[0].value, displayCurrency)}</p>
+      <p className={viewMode === "my_spend" ? "text-violet-600 dark:text-violet-400" : "text-blue-600 dark:text-blue-400"}>
+        {viewMode === "my_spend" ? "My spend: " : "Total: "}{formatAmount(payload[0].value, displayCurrency)}
+      </p>
     </div>
   );
 }
@@ -61,6 +69,7 @@ export default function AnalyticsPage() {
   const [rates, setRates] = useState<Record<string, number> | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState("USD");
   const [isDark, setIsDark] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("all_bills");
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -94,7 +103,11 @@ export default function AnalyticsPage() {
   }
 
   // Build chart data with conversion
-  const chartData = (data?.monthlySpending ?? []).map((m) => ({
+  const activeMonthly = viewMode === "my_spend"
+    ? (data?.monthlyMySpend ?? [])
+    : (data?.monthlySpending ?? []);
+
+  const chartData = activeMonthly.map((m) => ({
     month: monthLabel(m.month),
     total: m.total > 0 ? convert(m.total, m.currency) : 0,
     billCount: m.billCount,
@@ -123,31 +136,57 @@ export default function AnalyticsPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          {
-            label: "This Month",
-            value: s ? formatAmount(convert(s.thisMonthTotal, s.thisMonthCurrency ?? displayCurrency), displayCurrency) : "—",
-          },
-          { label: "Total Bills", value: s?.totalBillsCreated ?? "—" },
-          { label: "Friends", value: s?.totalFriends ?? "—" },
-          {
-            label: "Total Settled",
-            value: s && s.totalSettled > 0
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center">
+          <p className="text-xs text-slate-400 mb-1">Bills This Month</p>
+          <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+            {s ? formatAmount(convert(s.thisMonthTotal, s.thisMonthCurrency ?? displayCurrency), displayCurrency) : "—"}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center">
+          <p className="text-xs text-slate-400 mb-1">My Spend This Month</p>
+          <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+            {s ? formatAmount(convert(s.thisMonthMySpend, s.thisMonthCurrency ?? displayCurrency), displayCurrency) : "—"}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center">
+          <p className="text-xs text-slate-400 mb-1">Total Bills</p>
+          <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{s?.totalBillsCreated ?? "—"}</p>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center">
+          <p className="text-xs text-slate-400 mb-1">Total Settled</p>
+          <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+            {s && s.totalSettled > 0
               ? formatAmount(convert(s.totalSettled, s.settledCurrency ?? displayCurrency), displayCurrency)
-              : "—",
-          },
-        ].map((card) => (
-          <div key={card.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center">
-            <p className="text-xs text-slate-400 mb-1">{card.label}</p>
-            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{card.value}</p>
-          </div>
-        ))}
+              : "—"}
+          </p>
+        </div>
       </div>
 
       {/* Monthly chart */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-semibold text-slate-700 dark:text-slate-200">Monthly Spending</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("all_bills")}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                viewMode === "all_bills"
+                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              }`}
+            >
+              All Bills
+            </button>
+            <button
+              onClick={() => setViewMode("my_spend")}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                viewMode === "my_spend"
+                  ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              }`}
+            >
+              My Spend
+            </button>
+          </div>
           {rates && (
             <select
               value={displayCurrency}
@@ -180,12 +219,14 @@ export default function AnalyticsPage() {
                 tickFormatter={(v) => `${getCurrencySymbol(displayCurrency)}${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
                 width={50}
               />
-              <Tooltip content={<CustomTooltip displayCurrency={displayCurrency} />} cursor={{ fill: "transparent" }} />
+              <Tooltip content={<CustomTooltip displayCurrency={displayCurrency} viewMode={viewMode} />} cursor={{ fill: "transparent" }} />
               <Bar dataKey="total" radius={[6, 6, 0, 0]}>
                 {chartData.map((entry, index) => (
                   <Cell
                     key={index}
-                    fill={entry.hasData ? "#3b82f6" : isDark ? "#334155" : "#e2e8f0"}
+                    fill={entry.hasData
+                      ? (viewMode === "my_spend" ? "#8b5cf6" : "#3b82f6")
+                      : (isDark ? "#334155" : "#e2e8f0")}
                   />
                 ))}
               </Bar>
