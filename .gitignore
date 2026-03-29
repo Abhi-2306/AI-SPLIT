@@ -30,6 +30,11 @@ tsconfig.tsbuildinfo
 /public/worker-*.js
 /public/fallback-*.js
 
+# Playwright
+/playwright-report/
+/test-results/
+/e2e/.auth/
+
 # Claude local files
 .claude/
 
