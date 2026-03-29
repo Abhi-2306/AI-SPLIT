@@ -154,7 +154,7 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
                     className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
                   >
                     {f.avatarUrl ? (
-                      <img src={f.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+                      <img src={f.avatarUrl} alt="" referrerPolicy="no-referrer" className="w-5 h-5 rounded-full object-cover" />
                     ) : (
                       <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 text-xs font-semibold">
                         {f.displayName.charAt(0).toUpperCase()}

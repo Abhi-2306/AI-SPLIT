@@ -211,7 +211,7 @@ export default function AnalyticsPage() {
                   className="flex items-center gap-3 group text-left w-full"
                 >
                   {f.avatarUrl ? (
-                    <img src={f.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                    <img src={f.avatarUrl} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-semibold text-sm flex-shrink-0">
                       {f.displayName.charAt(0).toUpperCase()}

@@ -46,7 +46,7 @@ function FriendDebtCard({ friend }: { friend: FriendDto }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           {friend.avatarUrl ? (
-            <img src={friend.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+            <img src={friend.avatarUrl} alt="" referrerPolicy="no-referrer" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
           ) : (
             <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-semibold text-sm flex-shrink-0">
               {friend.displayName.charAt(0).toUpperCase()}
@@ -146,7 +146,7 @@ export default function FriendsPage() {
             title="Profile"
           >
             {currentUser?.avatarUrl ? (
-              <img src={currentUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+              <img src={currentUser.avatarUrl} alt="" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover" />
             ) : (
               <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 text-xs font-bold">
                 {currentUser?.displayName?.charAt(0).toUpperCase() ?? "?"}
@@ -193,7 +193,7 @@ export default function FriendsPage() {
               >
                 <div className="flex items-center gap-3">
                   {req.avatarUrl ? (
-                    <img src={req.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    <img src={req.avatarUrl} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-300 font-semibold text-sm">
                       {req.displayName.charAt(0).toUpperCase()}

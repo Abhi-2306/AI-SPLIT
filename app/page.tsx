@@ -116,6 +116,7 @@ export default function HomePage() {
               <img
                 src={currentUser.avatarUrl}
                 alt=""
+                referrerPolicy="no-referrer"
                 className="w-7 h-7 rounded-full object-cover"
               />
             ) : (

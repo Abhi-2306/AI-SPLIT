@@ -196,7 +196,7 @@ export default function FriendDetailPage({ params }: Params) {
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 mb-6">
           <div className="flex items-center gap-4">
             {friend?.avatarUrl ? (
-              <img src={friend.avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
+              <img src={friend.avatarUrl} alt="" referrerPolicy="no-referrer" className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
             ) : (
               <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-xl flex-shrink-0">
                 {friend?.displayName.charAt(0).toUpperCase() ?? "?"}
