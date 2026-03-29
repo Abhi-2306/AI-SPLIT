@@ -39,15 +39,15 @@ export function BillStepper({ currentStep, canGoToStep, onStepClick }: BillStepp
                   isCompleted
                     ? "bg-green-500 text-white"
                     : isCurrent
-                    ? "bg-blue-600 text-white ring-4 ring-blue-100"
-                    : "bg-slate-200 text-slate-500 group-hover:bg-slate-300"
+                    ? "bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900"
+                    : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-slate-300 dark:group-hover:bg-slate-600"
                 }`}
               >
                 {isCompleted ? "✓" : step.id}
               </div>
               <span
                 className={`text-xs font-medium hidden sm:block ${
-                  isCurrent ? "text-blue-600" : isCompleted ? "text-green-600" : "text-slate-500"
+                  isCurrent ? "text-blue-600 dark:text-blue-400" : isCompleted ? "text-green-600 dark:text-green-400" : "text-slate-500 dark:text-slate-400"
                 }`}
               >
                 {step.label}
@@ -56,7 +56,7 @@ export function BillStepper({ currentStep, canGoToStep, onStepClick }: BillStepp
             {idx < STEPS.length - 1 && (
               <div
                 className={`h-0.5 flex-1 mx-1 transition-colors ${
-                  currentStep > step.id ? "bg-green-400" : "bg-slate-200"
+                  currentStep > step.id ? "bg-green-400" : "bg-slate-200 dark:bg-slate-700"
                 }`}
               />
             )}

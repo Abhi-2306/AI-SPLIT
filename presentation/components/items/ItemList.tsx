@@ -82,7 +82,7 @@ export function ItemList({
             value={localTax}
             onChange={(e) => setLocalTax(e.target.value)}
             onBlur={(e) => onTaxChange(e.target.value ? parseFloat(e.target.value) : null)}
-            className="w-28 rounded border border-slate-300 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -95,7 +95,7 @@ export function ItemList({
             value={localTip}
             onChange={(e) => setLocalTip(e.target.value)}
             onBlur={(e) => onTipChange(e.target.value ? parseFloat(e.target.value) : null)}
-            className="w-28 rounded border border-slate-300 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex items-center gap-3 text-sm border-t border-slate-200 pt-2 mt-1">

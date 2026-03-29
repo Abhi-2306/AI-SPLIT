@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ParticipantDto, BillItemDto } from "@/application/dtos/index";
 import { getParticipantColor } from "@/presentation/store/selectors/billSelectors";
 import { Button } from "@/presentation/components/ui/Button";
@@ -25,6 +25,12 @@ export function AiSuggestionModal({ suggestions, reasoning, items, participants,
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState<string | null>(null); // itemId being applied individually
   const [applyingAll, setApplyingAll] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   const participantMap = new Map(participants.map((p, i) => [p.id, { name: p.name, color: getParticipantColor(i) }]));
   const itemMap = new Map(items.map((i) => [i.id, i]));
@@ -64,6 +70,9 @@ export function AiSuggestionModal({ suggestions, reasoning, items, participants,
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ai-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -71,8 +80,8 @@ export function AiSuggestionModal({ suggestions, reasoning, items, participants,
         {/* Header */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">✨</span>
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">AI Assignment Suggestions</h2>
+            <span className="text-lg" aria-hidden="true">✨</span>
+            <h2 id="ai-modal-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100">AI Assignment Suggestions</h2>
           </div>
           {reasoning && (
             <p className="text-sm text-slate-500 dark:text-slate-400 italic">{reasoning}</p>

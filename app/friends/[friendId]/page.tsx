@@ -72,6 +72,13 @@ export default function FriendDetailPage({ params }: Params) {
   const [confirmSettlement, setConfirmSettlement] = useState<Settlement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setShowModal(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [showModal]);
+
   function loadDebt() {
     return fetch(`/api/friends/${friendId}/debt`)
       .then((r) => r.json())
@@ -290,11 +297,14 @@ export default function FriendDetailPage({ params }: Params) {
       {/* Settle Up Modal */}
       {showModal && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settle-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1">Settle Up</h2>
+            <h2 id="settle-modal-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1">Settle Up</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
               Record a payment with{" "}
               <span className="font-medium text-slate-700 dark:text-slate-300">{friend?.displayName}</span>

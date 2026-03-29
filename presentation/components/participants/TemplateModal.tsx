@@ -35,6 +35,12 @@ export function TemplateModal({ mode, currentParticipants, currentCurrency, onLo
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  useEffect(() => {
     fetch("/api/templates")
       .then((r) => r.json())
       .then((j) => { if (j.success) setTemplates(j.data); })
@@ -82,15 +88,18 @@ export function TemplateModal({ mode, currentParticipants, currentCurrency, onLo
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="template-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-4 max-h-[80vh] overflow-hidden">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+          <h2 id="template-modal-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100">
             {mode === "save" ? "Save as Template" : "Load Template"}
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none">✕</button>
         </div>
 
         {/* Save form */}

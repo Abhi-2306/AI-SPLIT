@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button } from "./Button";
 
 type Props = {
@@ -21,15 +22,25 @@ export function ConfirmDialog({
   onCancel,
   loading,
 }: Props) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onCancel]);
+
   if (!open) return null;
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">{title}</h2>
+        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">{title}</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{message}</p>
         <div className="flex gap-3">
           <Button variant="secondary" className="flex-1" onClick={onCancel} disabled={loading}>

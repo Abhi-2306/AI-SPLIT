@@ -60,6 +60,15 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [rates, setRates] = useState<Record<string, number> | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState("USD");
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    setIsDark(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -160,12 +169,12 @@ export default function AnalyticsPage() {
             <BarChart data={chartData} barSize={32}>
               <XAxis
                 dataKey="month"
-                tick={{ fontSize: 12, fill: "#94a3b8" }}
+                tick={{ fontSize: 12, fill: isDark ? "#94a3b8" : "#64748b" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#64748b" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `${getCurrencySymbol(displayCurrency)}${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
@@ -176,7 +185,7 @@ export default function AnalyticsPage() {
                 {chartData.map((entry, index) => (
                   <Cell
                     key={index}
-                    fill={entry.hasData ? "#3b82f6" : "#e2e8f0"}
+                    fill={entry.hasData ? "#3b82f6" : isDark ? "#334155" : "#e2e8f0"}
                   />
                 ))}
               </Bar>
