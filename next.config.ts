@@ -46,6 +46,8 @@ export default withSentryConfig(withPWA(nextConfig), {
   automaticVercelMonitors: true,    // Vercel Cron Job monitoring
 
   // Source maps: upload in CI/production, hide from browser bundle
-  hideSourceMaps: true,
+  sourcemaps: {
+    disable: false,
+  },
   widenClientFileUpload: true,
 });
