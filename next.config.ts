@@ -5,10 +5,10 @@ const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
-  skipWaiting: true,
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   workboxOptions: {
+    skipWaiting: true,
     disableDevLogs: true,
     runtimeCaching: [
       // Bills API — NetworkFirst with 24h cache for offline viewing
