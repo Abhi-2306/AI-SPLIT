@@ -2,7 +2,7 @@
 
 A smart bill-splitting web app with AI-powered receipt scanning, friend debt tracking, and settle-up flows — built as a Splitwise alternative with per-item split control and OCR built in.
 
-Live: [your-app.vercel.app](https://ai-split-theta.vercel.app)
+Live: [ai-split-theta.vercel.app](https://ai-split-theta.vercel.app)
 
 ---
 
