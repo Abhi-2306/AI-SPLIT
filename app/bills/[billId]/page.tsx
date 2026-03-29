@@ -10,6 +10,7 @@ import { OcrResultPreview } from "@/presentation/components/receipt/OcrResultPre
 import { ItemList } from "@/presentation/components/items/ItemList";
 import { ItemForm } from "@/presentation/components/items/ItemForm";
 import { ParticipantList } from "@/presentation/components/participants/ParticipantList";
+import { TemplateModal } from "@/presentation/components/participants/TemplateModal";
 import { AssignmentMatrix } from "@/presentation/components/assignment/AssignmentMatrix";
 import { Button } from "@/presentation/components/ui/Button";
 import { Card, CardHeader, CardBody } from "@/presentation/components/ui/Card";
@@ -30,6 +31,7 @@ export default function BillPage({ params }: Params) {
   const [step, setStep] = useState(1);
   const [loadError, setLoadError] = useState(false);
   const autoAddedRef = useRef(false);
+  const [templateModal, setTemplateModal] = useState<"load" | "save" | null>(null);
 
   // Read ?step= from URL on mount (e.g. when navigating back from summary)
   useEffect(() => {
@@ -177,9 +179,27 @@ export default function BillPage({ params }: Params) {
       {step === 2 && (
         <Card>
           <CardHeader>
-            <h2 className="font-semibold text-slate-700 dark:text-slate-300">
-              Step 2 — Add Participants
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-slate-700 dark:text-slate-300">
+                Step 2 — Add Participants
+              </h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTemplateModal("load")}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                >
+                  📋 Load Template
+                </button>
+                {bill.participants.length > 0 && (
+                  <button
+                    onClick={() => setTemplateModal("save")}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    💾 Save Template
+                  </button>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardBody className="flex flex-col gap-4">
             <ParticipantList participants={bill.participants} billId={bill.id} />
@@ -212,6 +232,24 @@ export default function BillPage({ params }: Params) {
             </div>
           </CardBody>
         </Card>
+      )}
+
+      {/* Template Modal */}
+      {templateModal && (
+        <TemplateModal
+          mode={templateModal}
+          currentParticipants={bill.participants.map((p) => ({ name: p.name, userId: p.userId }))}
+          currentCurrency={bill.currency}
+          onLoad={async (participants) => {
+            const existing = new Set(bill.participants.map((p) => p.name.toLowerCase()));
+            for (const p of participants) {
+              if (!existing.has(p.name.toLowerCase())) {
+                await addParticipant(bill.id, p.name, p.userId ?? null).catch(() => null);
+              }
+            }
+          }}
+          onClose={() => setTemplateModal(null)}
+        />
       )}
 
       {/* Step 3: Assignments */}

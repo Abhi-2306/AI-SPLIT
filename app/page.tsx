@@ -104,6 +104,9 @@ export default function HomePage() {
           <Button variant="secondary" onClick={() => router.push(ROUTES.groups)}>
             Groups
           </Button>
+          <Button variant="secondary" onClick={() => router.push(ROUTES.analytics)}>
+            Analytics
+          </Button>
           <button
             onClick={() => router.push(ROUTES.profile)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"

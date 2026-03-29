@@ -4,6 +4,7 @@ export const ROUTES = {
   friends: "/friends",
   friendDetail: (friendId: string) => `/friends/${friendId}`,
   groups: "/groups",
+  analytics: "/analytics",
   newBill: "/bills/new",
   bill: (billId: string) => `/bills/${billId}`,
   billSummary: (billId: string) => `/bills/${billId}/summary`,
