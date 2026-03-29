@@ -100,14 +100,14 @@ export default function SummaryPage({ params }: Params) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
             Split Summary
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">{currentBill.title}</p>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+        <div className="flex gap-2 flex-wrap">
           <Button
             variant="secondary"
             onClick={() => router.push(ROUTES.bill(billId) + "?step=3")}

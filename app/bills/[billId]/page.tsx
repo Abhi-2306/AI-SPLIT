@@ -179,11 +179,11 @@ export default function BillPage({ params }: Params) {
       {step === 2 && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h2 className="font-semibold text-slate-700 dark:text-slate-300">
                 Step 2 — Add Participants
               </h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => setTemplateModal("load")}
                   className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
@@ -204,7 +204,7 @@ export default function BillPage({ params }: Params) {
           <CardBody className="flex flex-col gap-4">
             <ParticipantList participants={bill.participants} billId={bill.id} />
             {bill.participants.length > 0 && (
-              <div className="flex items-center gap-3 text-sm border-t border-slate-200 dark:border-slate-700 pt-3">
+              <div className="flex flex-wrap items-center gap-3 text-sm border-t border-slate-200 dark:border-slate-700 pt-3">
                 <span className="text-slate-500 dark:text-slate-400">Paid by:</span>
                 <select
                   value={bill.paidByParticipantId ?? ""}

@@ -194,7 +194,7 @@ export default function FriendDetailPage({ params }: Params) {
 
         {/* Friend profile + balance */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             {friend?.avatarUrl ? (
               <img src={friend.avatarUrl} alt="" referrerPolicy="no-referrer" className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
             ) : (
@@ -222,7 +222,7 @@ export default function FriendDetailPage({ params }: Params) {
         </div>
 
         {/* Bills + Settlements side by side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Shared Bills */}
           <div className="flex flex-col">
             <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">
@@ -232,7 +232,7 @@ export default function FriendDetailPage({ params }: Params) {
               {!debt || debt.bills.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-8">No shared bills yet.</p>
               ) : (
-                <div className="overflow-y-auto max-h-72 divide-y divide-slate-100 dark:divide-slate-700">
+                <div className="overflow-y-auto max-h-52 sm:max-h-72 divide-y divide-slate-100 dark:divide-slate-700">
                   {debt.bills.map((b) => (
                     <Link
                       key={b.billId}
@@ -266,7 +266,7 @@ export default function FriendDetailPage({ params }: Params) {
               {settlements.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-8">No payments recorded yet.</p>
               ) : (
-                <div className="overflow-y-auto max-h-72 divide-y divide-slate-100 dark:divide-slate-700">
+                <div className="overflow-y-auto max-h-52 sm:max-h-72 divide-y divide-slate-100 dark:divide-slate-700">
                   {settlements.map((s) => (
                     <div
                       key={s.id}

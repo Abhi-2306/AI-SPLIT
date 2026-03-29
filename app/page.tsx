@@ -94,18 +94,18 @@ export default function HomePage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">AI Split</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-8 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 flex-shrink-0">AI Split</h1>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <Button onClick={() => router.push(ROUTES.newBill)}>+ New Bill</Button>
           <Button variant="secondary" onClick={() => router.push(ROUTES.friends)}>
-            Friends
+            <span className="hidden sm:inline">Friends</span><span className="sm:hidden">👥</span>
           </Button>
           <Button variant="secondary" onClick={() => router.push(ROUTES.groups)}>
-            Groups
+            <span className="hidden sm:inline">Groups</span><span className="sm:hidden">🏘️</span>
           </Button>
           <Button variant="secondary" onClick={() => router.push(ROUTES.analytics)}>
-            Analytics
+            <span className="hidden sm:inline">Analytics</span><span className="sm:hidden">📊</span>
           </Button>
           <button
             onClick={() => router.push(ROUTES.profile)}
@@ -251,8 +251,8 @@ export default function HomePage() {
         onCancel={() => setConfirmBill(null)}
       />
 
-        {/* Activity feed */}
-        <div className="sticky top-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col max-h-[calc(100vh-6rem)]">
+        {/* Activity feed — hidden on mobile, sticky sidebar on large screens */}
+        <div className="hidden lg:flex sticky top-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex-col max-h-[calc(100vh-6rem)]">
           <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3 flex-shrink-0">Recent Activity</h2>
           <div className="overflow-y-auto flex-1 -mx-1 px-1">
             <ActivityFeed />

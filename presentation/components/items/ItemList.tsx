@@ -70,7 +70,7 @@ export function ItemList({
       <div className="mt-4 flex flex-col items-end gap-2">
         <div className="flex items-center gap-3 text-sm">
           <span className="text-slate-500">Subtotal:</span>
-          <span className="font-semibold w-28 text-right">{formatAmount(subtotal, currency)}</span>
+          <span className="font-semibold w-24 sm:w-28 text-right">{formatAmount(subtotal, currency)}</span>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-slate-500">Tax:</span>
@@ -82,7 +82,7 @@ export function ItemList({
             value={localTax}
             onChange={(e) => setLocalTax(e.target.value)}
             onBlur={(e) => onTaxChange(e.target.value ? parseFloat(e.target.value) : null)}
-            className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-24 sm:w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -95,12 +95,12 @@ export function ItemList({
             value={localTip}
             onChange={(e) => setLocalTip(e.target.value)}
             onBlur={(e) => onTipChange(e.target.value ? parseFloat(e.target.value) : null)}
-            className="w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-24 sm:w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex items-center gap-3 text-sm border-t border-slate-200 pt-2 mt-1">
           <span className="font-bold text-slate-700 dark:text-slate-200">Total:</span>
-          <span className="font-bold text-lg w-28 text-right">{formatAmount(total, currency)}</span>
+          <span className="font-bold text-lg w-24 sm:w-28 text-right">{formatAmount(total, currency)}</span>
         </div>
       </div>
     </div>

@@ -41,7 +41,7 @@ export function ItemForm({ billId }: ItemFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-2 items-end p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
-      <div className="col-span-5">
+      <div className="col-span-12 sm:col-span-5">
         <Input
           label="Item Name"
           placeholder="e.g. Pizza Margherita"
@@ -49,7 +49,7 @@ export function ItemForm({ billId }: ItemFormProps) {
           onChange={(e) => setName(e.target.value)}
         />
       </div>
-      <div className="col-span-2">
+      <div className="col-span-4 sm:col-span-2">
         <Input
           label="Qty"
           type="number"
@@ -60,7 +60,7 @@ export function ItemForm({ billId }: ItemFormProps) {
           onChange={(e) => setQuantity(e.target.value)}
         />
       </div>
-      <div className="col-span-3">
+      <div className="col-span-4 sm:col-span-3">
         <Input
           label="Unit Price"
           type="number"
@@ -71,7 +71,7 @@ export function ItemForm({ billId }: ItemFormProps) {
           onChange={(e) => setUnitPrice(e.target.value)}
         />
       </div>
-      <div className="col-span-2">
+      <div className="col-span-4 sm:col-span-2">
         <Button type="submit" loading={loading} className="w-full">
           + Add
         </Button>

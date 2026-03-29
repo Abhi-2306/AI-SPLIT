@@ -72,7 +72,7 @@ export default function NewBillPage() {
         </CardBody>
       </Card>
 
-      <div className="mt-6 grid grid-cols-3 gap-3 text-center text-sm text-slate-500">
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center text-sm text-slate-500">
         <div className="p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
           <p className="text-2xl mb-1">📷</p>
           <p>Scan receipt with OCR</p>
