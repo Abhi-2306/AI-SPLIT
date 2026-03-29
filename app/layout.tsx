@@ -5,6 +5,15 @@ import { ToastContainer } from "@/presentation/components/ui/ToastContainer";
 export const metadata: Metadata = {
   title: "AI Split — Smart Bill Splitter",
   description: "Split bills intelligently with item-level and quantity-level assignments",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "AI Split",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

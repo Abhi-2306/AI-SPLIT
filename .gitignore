@@ -22,6 +22,14 @@ out/
 # TypeScript build info
 tsconfig.tsbuildinfo
 
+# PWA generated service worker files (build artifacts)
+/public/sw.js
+/public/sw.js.map
+/public/workbox-*.js
+/public/workbox-*.js.map
+/public/worker-*.js
+/public/fallback-*.js
+
 # Claude local files
 .claude/
 

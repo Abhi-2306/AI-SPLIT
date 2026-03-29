@@ -1,0 +1,25 @@
+{
+  "name": "AI Split",
+  "short_name": "AI Split",
+  "description": "Smart bill splitter with AI-powered assignments",
+  "theme_color": "#2563eb",
+  "background_color": "#f8fafc",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
