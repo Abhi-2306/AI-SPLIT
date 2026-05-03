@@ -79,7 +79,7 @@ export class UpdateBillItemUseCase {
     }
 
     const newItems = bill.items.map((i) => (i.id === input.itemId ? updatedItem : i));
-    const { subtotal, total } = computeBillTotals(newItems, bill.currency, bill.tax, bill.tip);
+    const { subtotal, total } = computeBillTotals(newItems, bill.currency, bill.tax, bill.discount, bill.tip);
 
     const updated = {
       ...bill,

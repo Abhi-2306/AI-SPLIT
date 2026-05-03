@@ -8,7 +8,8 @@ type Params = { params: Promise<{ billId: string }> };
 
 const UpdateBillSchema = z.object({
   title: z.string().min(1).max(100).optional(),
-  tax: z.number().min(0).nullable().optional(),
+  tax: z.number().nullable().optional(),
+  discount: z.number().min(0).nullable().optional(),
   tip: z.number().min(0).nullable().optional(),
   paidByParticipantId: z.string().nullable().optional(),
 });

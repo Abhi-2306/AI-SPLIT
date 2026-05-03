@@ -116,14 +116,22 @@ export function calculateSplit(bill: Bill): SplitResult {
         ? createMoney(bill.tax.amount * proportion, bill.currency)
         : zeroMoney(bill.currency);
 
+    const discountShare: Money =
+      bill.discount !== null
+        ? createMoney(bill.discount.amount * proportion, bill.currency)
+        : zeroMoney(bill.currency);
+
     const tipShare: Money =
       bill.tip !== null
         ? createMoney(bill.tip.amount * proportion, bill.currency)
         : zeroMoney(bill.currency);
 
-    const total = createMoney(subtotalAmount + taxShare.amount + tipShare.amount, bill.currency);
+    const total = createMoney(
+      subtotalAmount + taxShare.amount - discountShare.amount + tipShare.amount,
+      bill.currency
+    );
 
-    return { participant, itemShares, subtotal, taxShare, tipShare, total };
+    return { participant, itemShares, subtotal, taxShare, discountShare, tipShare, total };
   });
 
   // ── Settlements (who owes the payer) ───────────────────────────────────────

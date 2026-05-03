@@ -47,7 +47,7 @@ export class BatchAddBillItemsUseCase {
     });
 
     const allItems = [...bill.items, ...newItems];
-    const { subtotal, total } = computeBillTotals(allItems, bill.currency, bill.tax, bill.tip);
+    const { subtotal, total } = computeBillTotals(allItems, bill.currency, bill.tax, bill.discount, bill.tip);
 
     await this.billRepository.save({
       ...bill,

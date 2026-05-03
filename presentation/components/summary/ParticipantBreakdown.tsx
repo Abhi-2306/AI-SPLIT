@@ -48,9 +48,15 @@ export function ParticipantBreakdown({ split, index, currency, paidByParticipant
             <div key={share.item.id} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-slate-600 dark:text-slate-400">{share.item.name}</span>
-                <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                  units: {share.assignedUnitIndices.map((i) => `#${i + 1}`).join(", ")}
-                </span>
+                {share.item.splitConfig === null ? (
+                  <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                    units: {share.assignedUnitIndices.map((i) => `#${i + 1}`).join(", ")}
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded capitalize">
+                    {share.item.splitConfig.mode.replace(/_/g, " ")}
+                  </span>
+                )}
               </div>
               <span className="font-medium text-slate-700 dark:text-slate-300">
                 {formatAmount(share.amountOwed, currency)}
@@ -58,17 +64,27 @@ export function ParticipantBreakdown({ split, index, currency, paidByParticipant
             </div>
           ))}
 
-          {/* Tax / Tip */}
-          {split.taxShare > 0 && (
-            <div className="flex items-center justify-between text-sm border-t border-slate-100 dark:border-slate-700 pt-2 mt-1">
-              <span className="text-slate-500">Tax share</span>
-              <span className="text-slate-600 dark:text-slate-400">{formatAmount(split.taxShare, currency)}</span>
-            </div>
-          )}
-          {split.tipShare > 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">Tip share</span>
-              <span className="text-slate-600 dark:text-slate-400">{formatAmount(split.tipShare, currency)}</span>
+          {/* Tax / Discount / Tip */}
+          {(split.taxShare !== 0 || split.discountShare > 0 || split.tipShare > 0) && (
+            <div className="border-t border-slate-100 dark:border-slate-700 pt-2 mt-1 flex flex-col gap-1">
+              {split.taxShare !== 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500">Tax / fees share</span>
+                  <span className="text-slate-600 dark:text-slate-400">{formatAmount(split.taxShare, currency)}</span>
+                </div>
+              )}
+              {split.discountShare > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-green-600 dark:text-green-400">Discount share</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">−{formatAmount(split.discountShare, currency)}</span>
+                </div>
+              )}
+              {split.tipShare > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500">Tip share</span>
+                  <span className="text-slate-600 dark:text-slate-400">{formatAmount(split.tipShare, currency)}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

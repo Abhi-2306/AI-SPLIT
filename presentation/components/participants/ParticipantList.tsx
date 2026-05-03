@@ -19,7 +19,6 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
   const { friends, loadFriends } = useFriendStore();
   const { addToast } = useUiStore();
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showFriendPicker, setShowFriendPicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; displayName: string } | null>(null);
   const [showGroupPicker, setShowGroupPicker] = useState(false);
@@ -40,18 +39,15 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
   const availableFriends = friends.filter((f) => !linkedUserIds.has(f.userId));
   const selfNotInBill = currentUser && !linkedUserIds.has(currentUser.id);
 
-  async function handleAdd(e: React.FormEvent) {
+  function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    setLoading(true);
-    try {
-      await addParticipant(billId, name.trim());
-      setName("");
-    } catch (err: unknown) {
+    const trimmedName = name.trim();
+    setName("");
+    addParticipant(billId, trimmedName).catch((err: unknown) => {
       addToast(err instanceof Error ? err.message : "Failed to add participant", "error");
-    } finally {
-      setLoading(false);
-    }
+      setName(trimmedName); // restore on failure
+    });
   }
 
   async function handleAddFriend(friend: FriendDto) {
@@ -123,7 +119,7 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
             className="flex-1"
             onKeyDown={(e) => e.key === "Enter" && handleAdd(e)}
           />
-          <Button type="submit" loading={loading} disabled={!name.trim()}>
+          <Button type="submit" disabled={!name.trim()}>
             Add
           </Button>
         </form>
@@ -214,7 +210,7 @@ export function ParticipantList({ participants, billId }: ParticipantListProps) 
               key={p.id}
               participant={p}
               index={idx}
-              billId={billId}
+              billId={p.userId ? undefined : billId}
               onRemove={() => handleRemove(p.id, p.name)}
             />
           ))}

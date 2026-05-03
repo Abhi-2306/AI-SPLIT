@@ -27,7 +27,7 @@ export class DeleteBillItemUseCase {
 
     const newItems = bill.items.filter((i) => i.id !== input.itemId);
     const newAssignments = bill.assignments.filter((a) => a.billItemId !== input.itemId);
-    const { subtotal, total } = computeBillTotals(newItems, bill.currency, bill.tax, bill.tip);
+    const { subtotal, total } = computeBillTotals(newItems, bill.currency, bill.tax, bill.discount, bill.tip);
 
     const updated = {
       ...bill,

@@ -11,9 +11,11 @@ type ItemListProps = {
   currency: string;
   subtotal: number;
   tax: number | null;
+  discount: number | null;
   tip: number | null;
   total: number;
   onTaxChange: (value: number | null) => void;
+  onDiscountChange: (value: number | null) => void;
   onTipChange: (value: number | null) => void;
 };
 
@@ -23,17 +25,21 @@ export function ItemList({
   currency,
   subtotal,
   tax,
+  discount,
   tip,
   total,
   onTaxChange,
+  onDiscountChange,
   onTipChange,
 }: ItemListProps) {
   // Local state so typing doesn't trigger API on every keystroke
   const [localTax, setLocalTax] = useState<string>(tax !== null ? String(tax) : "");
+  const [localDiscount, setLocalDiscount] = useState<string>(discount !== null ? String(discount) : "");
   const [localTip, setLocalTip] = useState<string>(tip !== null ? String(tip) : "");
 
   // Sync when the prop changes externally (e.g. OCR auto-apply)
   useEffect(() => { setLocalTax(tax !== null ? String(tax) : ""); }, [tax]);
+  useEffect(() => { setLocalDiscount(discount !== null ? String(discount) : ""); }, [discount]);
   useEffect(() => { setLocalTip(tip !== null ? String(tip) : ""); }, [tip]);
 
   if (items.length === 0) {
@@ -73,7 +79,7 @@ export function ItemList({
           <span className="font-semibold w-24 sm:w-28 text-right">{formatAmount(subtotal, currency)}</span>
         </div>
         <div className="flex items-center gap-3 text-sm">
-          <span className="text-slate-500">Tax:</span>
+          <span className="text-slate-500">Tax / Fees:</span>
           <input
             type="number"
             min={0}
@@ -83,6 +89,19 @@ export function ItemList({
             onChange={(e) => setLocalTax(e.target.value)}
             onBlur={(e) => onTaxChange(e.target.value ? parseFloat(e.target.value) : null)}
             className="w-24 sm:w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-green-600 dark:text-green-400">Discount:</span>
+          <input
+            type="number"
+            min={0}
+            step="any"
+            placeholder="0"
+            value={localDiscount}
+            onChange={(e) => setLocalDiscount(e.target.value)}
+            onBlur={(e) => onDiscountChange(e.target.value ? parseFloat(e.target.value) : null)}
+            className="w-24 sm:w-28 rounded border border-green-300 dark:border-green-700 bg-white dark:bg-slate-800 text-green-700 dark:text-green-300 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -98,7 +117,7 @@ export function ItemList({
             className="w-24 sm:w-28 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="flex items-center gap-3 text-sm border-t border-slate-200 pt-2 mt-1">
+        <div className="flex items-center gap-3 text-sm border-t border-slate-200 dark:border-slate-700 pt-2 mt-1">
           <span className="font-bold text-slate-700 dark:text-slate-200">Total:</span>
           <span className="font-bold text-lg w-24 sm:w-28 text-right">{formatAmount(total, currency)}</span>
         </div>

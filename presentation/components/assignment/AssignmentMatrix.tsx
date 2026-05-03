@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { BillDto } from "@/application/dtos/index";
 import { ItemAssignmentRow } from "./ItemAssignmentRow";
-import { ParticipantChip } from "@/presentation/components/participants/ParticipantChip";
-import { getAssignedUnits, getTotalUnits } from "@/presentation/store/selectors/billSelectors";
+import { getAssignedUnits, getTotalUnits, getParticipantColor } from "@/presentation/store/selectors/billSelectors";
 import { useBillStore } from "@/presentation/store/billStore";
 import { useUiStore } from "@/presentation/store/uiStore";
 import { AiSuggestionModal, type AiSuggestion } from "./AiSuggestionModal";
@@ -108,7 +107,10 @@ export function AssignmentMatrix({ bill }: AssignmentMatrixProps) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-slate-500 font-medium">Participants:</span>
           {bill.participants.map((p, idx) => (
-            <ParticipantChip key={p.id} participant={p} index={idx} />
+            <div key={p.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 text-sm font-medium">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getParticipantColor(idx)}`} />
+              <span className="text-slate-700 dark:text-slate-200">{p.name}</span>
+            </div>
           ))}
         </div>
         <div className="flex flex-col items-end gap-0.5 flex-shrink-0">

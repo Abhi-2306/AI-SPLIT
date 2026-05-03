@@ -80,6 +80,16 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participants.length]);
 
+  // For items that haven't been saved yet and default to "equally" mode,
+  // persist the initial all-selected state immediately so the progress bar
+  // counts them as assigned from the start.
+  useEffect(() => {
+    if (!item.splitConfig && mode === "equally" && equallySelected.size > 0) {
+      triggerAutoSave("equally", equallySelected, entries).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function setEntryValue(participantId: string, value: number) {
     setEntries((prev) =>
       prev.map((e) => (e.participantId === participantId ? { ...e, value } : e))
@@ -214,7 +224,7 @@ export function ItemAssignmentRow({ item, billId, participants, currency }: Item
       {(mode === "by_count" || mode === "by_percentage" || mode === "by_shares" || mode === "by_amount") && (
         <div className="flex flex-col gap-2 sm:ml-48">
           {participants.map((p, idx) => {
-            const entry = entries.find((e) => e.participantId === p.id)!;
+            const entry = entries.find((e) => e.participantId === p.id) ?? { participantId: p.id, value: 0 };
             const placeholder =
               mode === "by_percentage" ? "%" :
               mode === "by_count" ? `of ${subCount}` :

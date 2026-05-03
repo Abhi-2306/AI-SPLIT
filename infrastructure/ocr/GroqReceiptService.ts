@@ -27,8 +27,25 @@ Return ONLY valid JSON — no markdown, no explanation, no code fences. Use exac
 }
 
 Rules:
-- Include ONLY actual purchased items (food, products, services).
-- SKIP these lines entirely (do NOT add them to items): store name, address, phone, date/time, order/bill/table number, cashier, barcode, loyalty points, payment method, "thank you" lines, and any tax/GST/VAT/service charge/tip/total lines.
+- Include ONLY actual purchased grocery/food/product items — things a person physically bought.
+- A real item line looks like: a product name (often with brand, weight, count) followed by "N x $price" or just a price.
+- SKIP ALL of these — do NOT add them to items under any circumstances:
+    • Store name, address, phone, date/time, order ID, item ID numbers, cashier name, barcode
+    • Loyalty savings / loyalty points lines ("Loyalty savings: $X")
+    • Payment method lines (Visa, Mastercard, card ending in XXXX)
+    • Thank you / confirmation messages
+    • Tax, GST, VAT, service charge, service fee, delivery fee, convenience fee lines
+    • Tip or gratuity lines
+    • Subtotal, total, grand total, amount due lines
+    • Discount, promotion, credit lines — capture their VALUE in detectedDiscount instead
+    • Any line containing "Additional charge for order", "Reconciliation", "Instacart credit",
+      "Total charged", "authorized for", "hold removed", "statement", "Learn more",
+      "temporarily authorized", "delivery id", "membership", "Instacart+"
+    • Section headings like "CHARGES", "ORDER TOTALS", "ITEMS FOUND", category labels
+      (BAKERY, DAIRY & EGGS, PRODUCE, HEALTH & PERSONAL CARE, etc.)
+- Stop extracting items when you hit a section heading like "CHARGES", "ORDER TOTALS",
+  "Items Subtotal", or any payment/reconciliation block. Only items before that block count.
+  If the same receipt section repeats (e.g. "ITEMS FOUND" appears twice), collect items from ALL item sections.
 - quantity: the NUMBER OF SEPARATE identical items purchased on this line — almost always 1.
   What IS quantity: "2x Burger" → quantity=2 | "3 bottles water" → quantity=3.
   What is NOT quantity (these are product descriptors — keep in the name, set quantity=1):
@@ -37,28 +54,30 @@ Rules:
     • Size words: "large", "XL", "family size"
 - unitPrice: price for the whole line ÷ quantity. If line shows "3x Pizza 300", unitPrice=100.
 - confidence: "high" = clearly readable, "medium" = somewhat uncertain, "low" = heavily guessed.
-- detectedTax: sum ALL charges added on top of the item subtotal — includes GST, VAT, service tax, CGST, SGST, cess, surcharge, service fee, delivery fee, convenience fee, beverage container fee, bottle deposit, environmental fee, and any other fee line that is NOT an item being purchased. Do NOT subtract discounts. null only if absolutely no such line exists.
-- detectedDiscount: sum ALL discounts, promotions, credits, and negative adjustments as a POSITIVE number (e.g. "Scheduled delivery discount -$2.00" → detectedDiscount = 2.00). null if no discount exists.
-- detectedTip: tip or gratuity amount (null if none).
-- detectedTotal: grand total or amount due.
+- detectedTax: ONLY use the primary order summary section (near "Items Subtotal"). Sum all fees added on top of item subtotal — service fee, delivery fee, GST, VAT, surcharge, etc. Ignore any "Additional charge", "Reconciliation", or post-delivery adjustment amounts. null if none.
+- detectedDiscount: ONLY from the primary order summary section. Sum ALL discounts/promotions as a POSITIVE number (e.g. "Scheduled delivery discount -$2.00" → detectedDiscount = 2.00). Ignore post-delivery credit adjustments. null if no discount.
+- detectedTip: tip or gratuity amount from the primary order summary only (null if none).
+- detectedTotal: the primary order total (near "Items Subtotal") — NOT "Total charged" which includes post-delivery adjustments.
 - detectedCurrency: ISO code (USD, INR, EUR, GBP) inferred from $, ₹, €, £ or text like "Rs.", "USD".
 - Fix obvious OCR errors in names (e.g. "P1ZZA" → "Pizza", "CHIKN" → "Chicken").`;
 
 // ─── Response type ───────────────────────────────────────────────────────────
 
+// LLMs don't always honour JSON number types — use string | number for numeric fields
+// so the filter/map can coerce them correctly with Number().
 type GroqResponse = {
   rawText?: string;
   items?: Array<{
     name: string;
-    quantity: number;
-    unitPrice: number;
+    quantity: number | string;
+    unitPrice: number | string;
     confidence: string;
   }>;
   detectedCurrency?: string | null;
-  detectedTax?: number | null;
-  detectedDiscount?: number | null;
-  detectedTip?: number | null;
-  detectedTotal?: number | null;
+  detectedTax?: number | string | null;
+  detectedDiscount?: number | string | null;
+  detectedTip?: number | string | null;
+  detectedTotal?: number | string | null;
 };
 
 // ─── Service ─────────────────────────────────────────────────────────────────
@@ -114,6 +133,7 @@ export class GroqReceiptService implements IReceiptExtractorService {
     });
 
     const responseText = response.choices[0]?.message?.content ?? "";
+    console.log("[GroqReceiptService] Image raw response:", responseText.slice(0, 500));
     return this.buildDto(responseText, Date.now() - start);
   }
 
@@ -133,11 +153,22 @@ export class GroqReceiptService implements IReceiptExtractorService {
     };
 
     try {
-      // Use pdfjs-dist directly — works reliably with Buffer input
+      // Use pdfjs-dist directly — works reliably with Buffer input.
+      // pdfjs-dist v5 requires a real workerSrc even in Node.js environments.
+      // We point it to the worker file in node_modules via a file:// URL.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs") as any;
+      const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs") as any;
+      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        const { resolve } = await import("path");
+        const { pathToFileURL } = await import("url");
+        const workerPath = resolve(
+          process.cwd(),
+          "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"
+        );
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+      }
       const uint8 = new Uint8Array(buffer);
-      const doc = await getDocument({ data: uint8 }).promise;
+      const doc = await pdfjsLib.getDocument({ data: uint8 }).promise;
       let extractedText = "";
       for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
@@ -147,6 +178,7 @@ export class GroqReceiptService implements IReceiptExtractorService {
       }
 
       if (!extractedText.trim()) {
+        console.warn("[GroqReceiptService] PDF produced no extractable text.");
         return emptyResult;
       }
 
@@ -156,9 +188,12 @@ export class GroqReceiptService implements IReceiptExtractorService {
           { role: "user", content: `${EXTRACTION_PROMPT}\n\nReceipt text:\n\n${extractedText}` },
         ],
         temperature: 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        response_format: { type: "json_object" } as any,
       });
 
       const responseText = response.choices[0]?.message?.content ?? "";
+      console.log("[GroqReceiptService] PDF raw response:", responseText.slice(0, 500));
       return this.buildDto(responseText, Date.now() - start, extractedText);
     } catch (err) {
       console.error("[GroqReceiptService] PDF parsing failed:", err);
@@ -176,7 +211,11 @@ export class GroqReceiptService implements IReceiptExtractorService {
     const parsed = this.safeParseJson(responseText);
 
     const parsedItems: ParsedItemDto[] = (parsed.items ?? [])
-      .filter((item) => item.name && typeof item.unitPrice === "number" && item.unitPrice >= 0)
+      .filter((item) => {
+        // Accept both number and string prices — LLMs sometimes return "10.00" instead of 10.00
+        const price = Number(item.unitPrice);
+        return item.name && !isNaN(price) && price >= 0;
+      })
       .map((item) => ({
         name: String(item.name).trim(),
         quantity: Math.max(1, Math.round(Number(item.quantity) || 1)),
@@ -187,16 +226,22 @@ export class GroqReceiptService implements IReceiptExtractorService {
           : "medium") as "high" | "medium" | "low",
       }));
 
+    const toNum = (v: number | string | null | undefined): number | null => {
+      if (v == null) return null;
+      const n = Number(v);
+      return isNaN(n) ? null : n;
+    };
+
     return {
       rawText: parsed.rawText ?? fallbackRawText ?? responseText,
       confidence: 1.0,
       processingTimeMs,
       parsedItems,
       detectedCurrency: parsed.detectedCurrency ?? null,
-      detectedTax: typeof parsed.detectedTax === "number" ? parsed.detectedTax : null,
-      detectedDiscount: typeof parsed.detectedDiscount === "number" ? parsed.detectedDiscount : null,
-      detectedTip: typeof parsed.detectedTip === "number" ? parsed.detectedTip : null,
-      detectedTotal: typeof parsed.detectedTotal === "number" ? parsed.detectedTotal : null,
+      detectedTax: toNum(parsed.detectedTax),
+      detectedDiscount: toNum(parsed.detectedDiscount),
+      detectedTip: toNum(parsed.detectedTip),
+      detectedTotal: toNum(parsed.detectedTotal),
     };
   }
 

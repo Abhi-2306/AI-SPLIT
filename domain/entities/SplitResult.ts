@@ -14,6 +14,7 @@ export type ParticipantSplit = {
   readonly itemShares: ReadonlyArray<ItemShare>;
   readonly subtotal: Money;
   readonly taxShare: Money;
+  readonly discountShare: Money;
   readonly tipShare: Money;
   readonly total: Money;
 };

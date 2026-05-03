@@ -100,6 +100,15 @@ export default function BillPage({ params }: Params) {
     }
   }
 
+  async function handleDiscountChange(value: number | null) {
+    setSavingMeta(true);
+    try {
+      await updateBillMeta(bill.id, { discount: value });
+    } finally {
+      setSavingMeta(false);
+    }
+  }
+
   async function handleTipChange(value: number | null) {
     setSavingMeta(true);
     try {
@@ -146,7 +155,7 @@ export default function BillPage({ params }: Params) {
           <CardBody className="flex flex-col gap-6">
             <ReceiptUploader billId={bill.id} />
             {ocrResult && (
-              <OcrResultPreview billId={bill.id} onDone={() => {}} />
+              <OcrResultPreview billId={bill.id} currency={bill.currency} onDone={() => {}} />
             )}
             <ItemList
               items={bill.items}
@@ -154,9 +163,11 @@ export default function BillPage({ params }: Params) {
               currency={bill.currency}
               subtotal={bill.subtotal}
               tax={bill.tax}
+              discount={bill.discount}
               tip={bill.tip}
               total={bill.total}
               onTaxChange={handleTaxChange}
+              onDiscountChange={handleDiscountChange}
               onTipChange={handleTipChange}
             />
             <ItemForm billId={bill.id} />

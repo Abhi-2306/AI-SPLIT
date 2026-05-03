@@ -20,7 +20,7 @@ export class CreateBillUseCase {
   ) {}
 
   async execute(input: CreateBillInput): Promise<BillDto> {
-    const { subtotal, total } = computeBillTotals([], input.currency, null, null);
+    const { subtotal, total } = computeBillTotals([], input.currency, null, null, null);
     const now = new Date();
 
     const bill: Bill = {
@@ -32,6 +32,7 @@ export class CreateBillUseCase {
       assignments: [],
       subtotal,
       tax: null,
+      discount: null,
       tip: null,
       total,
       status: "draft",

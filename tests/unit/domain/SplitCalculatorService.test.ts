@@ -15,6 +15,7 @@ function makeBill(overrides: Partial<Bill> = {}): Bill {
     assignments: [],
     subtotal: zeroMoney("INR"),
     tax: null,
+    discount: null,
     tip: null,
     total: zeroMoney("INR"),
     status: "draft",
@@ -33,7 +34,7 @@ describe("SplitCalculatorService", () => {
     expect(result.isComplete).toBe(true);
   });
 
-  it("marks all unassigned units when no assignments", () => {
+  it("treats items with no assignments as equally split (not unassigned)", () => {
     const item = createBillItem(
       asBillItemId("item-1"),
       "Pizza",
@@ -42,7 +43,31 @@ describe("SplitCalculatorService", () => {
     );
     const bill = makeBill({ items: [item], subtotal: createMoney(300, "INR"), total: createMoney(300, "INR") });
     const result = calculateSplit(bill);
-    expect(result.unassignedUnits).toHaveLength(3);
+    // Items never touched by user default to "equally split" — not flagged as unassigned
+    expect(result.unassignedUnits).toHaveLength(0);
+    expect(result.isComplete).toBe(true);
+  });
+
+  it("marks partially-assigned units as unassigned", () => {
+    const item = createBillItem(
+      asBillItemId("item-1"),
+      "Pizza",
+      3,
+      createMoney(100, "INR")
+    );
+    const john = { id: asParticipantId("john"), name: "John", userId: null, createdAt: new Date() };
+    // Only unit 0 is assigned — units 1 and 2 should be flagged as unassigned
+    const bill = makeBill({
+      items: [item],
+      participants: [john],
+      assignments: [
+        { id: asAssignmentId("a1"), billItemId: item.id, participantId: john.id, unitIndex: 0 },
+      ],
+      subtotal: createMoney(300, "INR"),
+      total: createMoney(300, "INR"),
+    });
+    const result = calculateSplit(bill);
+    expect(result.unassignedUnits).toHaveLength(2);
     expect(result.isComplete).toBe(false);
   });
 
@@ -53,8 +78,8 @@ describe("SplitCalculatorService", () => {
       2,
       createMoney(100, "INR") // 100 per unit, 200 total
     );
-    const john = { id: asParticipantId("john"), name: "John", createdAt: new Date() };
-    const alice = { id: asParticipantId("alice"), name: "Alice", createdAt: new Date() };
+    const john = { id: asParticipantId("john"), name: "John", userId: null, createdAt: new Date() };
+    const alice = { id: asParticipantId("alice"), name: "Alice", userId: null, createdAt: new Date() };
 
     const bill = makeBill({
       items: [item],
@@ -88,8 +113,8 @@ describe("SplitCalculatorService", () => {
       3,
       createMoney(10, "INR") // 10 per unit, 30 total
     );
-    const john = { id: asParticipantId("john"), name: "John", createdAt: new Date() };
-    const alice = { id: asParticipantId("alice"), name: "Alice", createdAt: new Date() };
+    const john = { id: asParticipantId("john"), name: "John", userId: null, createdAt: new Date() };
+    const alice = { id: asParticipantId("alice"), name: "Alice", userId: null, createdAt: new Date() };
 
     const bill = makeBill({
       items: [item],
@@ -119,8 +144,8 @@ describe("SplitCalculatorService", () => {
       2,
       createMoney(100, "INR")
     );
-    const john = { id: asParticipantId("john"), name: "John", createdAt: new Date() };
-    const alice = { id: asParticipantId("alice"), name: "Alice", createdAt: new Date() };
+    const john = { id: asParticipantId("john"), name: "John", userId: null, createdAt: new Date() };
+    const alice = { id: asParticipantId("alice"), name: "Alice", userId: null, createdAt: new Date() };
 
     const bill = makeBill({
       items: [item],
@@ -153,7 +178,7 @@ describe("SplitCalculatorService", () => {
       3,
       createMoney(10, "INR") // 10 per unit, 30 total
     );
-    const john = { id: asParticipantId("john"), name: "John", createdAt: new Date() };
+    const john = { id: asParticipantId("john"), name: "John", userId: null, createdAt: new Date() };
 
     const bill = makeBill({
       items: [item],

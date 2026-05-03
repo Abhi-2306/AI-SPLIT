@@ -11,6 +11,7 @@ export type UpdateBillMetaInput = {
   billId: string;
   title?: string;
   tax?: number | null;
+  discount?: number | null;
   tip?: number | null;
   paidByParticipantId?: string | null;
 };
@@ -27,12 +28,17 @@ export class UpdateBillMetaUseCase {
         ? input.tax !== null ? createMoney(input.tax, bill.currency) : null
         : bill.tax;
 
+    const newDiscount =
+      input.discount !== undefined
+        ? input.discount !== null ? createMoney(input.discount, bill.currency) : null
+        : bill.discount;
+
     const newTip =
       input.tip !== undefined
         ? input.tip !== null ? createMoney(input.tip, bill.currency) : null
         : bill.tip;
 
-    const { subtotal, total } = computeBillTotals(bill.items, bill.currency, newTax, newTip);
+    const { subtotal, total } = computeBillTotals(bill.items, bill.currency, newTax, newDiscount, newTip);
 
     let newPaidBy = bill.paidByParticipantId;
     if (input.paidByParticipantId !== undefined) {
@@ -49,6 +55,7 @@ export class UpdateBillMetaUseCase {
       ...bill,
       title: input.title ?? bill.title,
       tax: newTax,
+      discount: newDiscount,
       tip: newTip,
       paidByParticipantId: newPaidBy,
       subtotal,

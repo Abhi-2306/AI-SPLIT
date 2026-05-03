@@ -47,7 +47,7 @@ export class AddBillItemUseCase {
     );
 
     const newItems = [...bill.items, item];
-    const { subtotal, total } = computeBillTotals(newItems, bill.currency, bill.tax, bill.tip);
+    const { subtotal, total } = computeBillTotals(newItems, bill.currency, bill.tax, bill.discount, bill.tip);
 
     const updated = {
       ...bill,

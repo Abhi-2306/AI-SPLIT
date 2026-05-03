@@ -41,6 +41,7 @@ export type BillDto = {
   assignments: AssignmentDto[];
   subtotal: number;
   tax: number | null;
+  discount: number | null;
   tip: number | null;
   total: number;
   status: "draft" | "assigned" | "settled";
@@ -80,6 +81,7 @@ export type ParticipantSplitDto = {
   itemShares: ItemShareDto[];
   subtotal: number;
   taxShare: number;
+  discountShare: number;
   tipShare: number;
   total: number;
 };

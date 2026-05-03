@@ -16,6 +16,7 @@ export type Bill = {
   readonly assignments: ReadonlyArray<Assignment>;
   readonly subtotal: Money;
   readonly tax: Money | null;
+  readonly discount: Money | null;
   readonly tip: Money | null;
   readonly total: Money;
   readonly status: BillStatus;
@@ -28,6 +29,7 @@ export function computeBillTotals(
   items: ReadonlyArray<BillItem>,
   currency: string,
   tax: Money | null,
+  discount: Money | null,
   tip: Money | null
 ): { subtotal: Money; total: Money } {
   const subtotal = items.reduce(
@@ -35,7 +37,8 @@ export function computeBillTotals(
     zeroMoney(currency)
   );
   const taxAmount = tax?.amount ?? 0;
+  const discountAmount = discount?.amount ?? 0;
   const tipAmount = tip?.amount ?? 0;
-  const total = { amount: subtotal.amount + taxAmount + tipAmount, currency };
+  const total = { amount: subtotal.amount + taxAmount - discountAmount + tipAmount, currency };
   return { subtotal, total };
 }

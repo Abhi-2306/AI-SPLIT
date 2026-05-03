@@ -6,15 +6,17 @@ import { Button } from "@/presentation/components/ui/Button";
 import { Input } from "@/presentation/components/ui/Input";
 import { useBillStore } from "@/presentation/store/billStore";
 import { useUiStore } from "@/presentation/store/uiStore";
+import { formatAmount } from "@/lib/utils/currency";
 
 type OcrResultPreviewProps = {
   billId: string;
+  currency: string;
   onDone: () => void;
 };
 
 type EditableItem = ParsedItemDto & { selected: boolean };
 
-export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
+export function OcrResultPreview({ billId, currency, onDone }: OcrResultPreviewProps) {
   const { ocrResult, clearOcrResult, batchAddItems, updateBillMeta } = useBillStore();
   const { addToast } = useUiStore();
   const [items, setItems] = useState<EditableItem[]>(
@@ -47,17 +49,14 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
           unitPrice: item.unitPrice,
         }))
       );
-      // Auto-apply detected tax/fees (minus discount) and/or tip if checked
-      let taxToApply: number | undefined;
-      if (applyTax && ocrResult!.detectedTax !== null) {
-        const gross = ocrResult!.detectedTax;
-        const disc = applyDiscount && ocrResult!.detectedDiscount !== null ? ocrResult!.detectedDiscount : 0;
-        taxToApply = Math.max(0, gross - disc);
-      }
+      // Auto-apply detected tax, discount, and tip as separate fields.
+      const taxToApply = applyTax && ocrResult!.detectedTax !== null ? ocrResult!.detectedTax : undefined;
+      const discountToApply = applyDiscount && ocrResult!.detectedDiscount !== null ? ocrResult!.detectedDiscount : undefined;
       const tipToApply = applyTip && ocrResult!.detectedTip !== null ? ocrResult!.detectedTip : undefined;
-      if (taxToApply !== undefined || tipToApply !== undefined) {
+      if (taxToApply !== undefined || discountToApply !== undefined || tipToApply !== undefined) {
         await updateBillMeta(billId, {
           ...(taxToApply !== undefined ? { tax: taxToApply } : {}),
+          ...(discountToApply !== undefined ? { discount: discountToApply } : {}),
           ...(tipToApply !== undefined ? { tip: tipToApply } : {}),
         });
       }
@@ -77,9 +76,6 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
   const hasTax = ocrResult.detectedTax !== null && ocrResult.detectedTax > 0;
   const hasDiscount = ocrResult.detectedDiscount !== null && ocrResult.detectedDiscount > 0;
   const hasTip = ocrResult.detectedTip !== null && ocrResult.detectedTip > 0;
-  const netTax = hasTax
-    ? Math.max(0, ocrResult.detectedTax! - (applyDiscount && hasDiscount ? ocrResult.detectedDiscount! : 0))
-    : 0;
 
   return (
     <div className="mt-4 border border-blue-200 rounded-xl bg-blue-50 dark:bg-blue-950 dark:border-blue-800 p-4">
@@ -157,7 +153,7 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
                 onChange={(e) => setApplyTax(e.target.checked)}
                 className="accent-blue-600 w-4 h-4"
               />
-              Fees / tax: <span className="font-semibold">+{ocrResult.detectedTax?.toFixed(2)}</span>
+              Fees / tax: <span className="font-semibold">+{formatAmount(ocrResult.detectedTax!, currency)}</span>
             </label>
           )}
           {hasDiscount && (
@@ -168,13 +164,8 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
                 onChange={(e) => setApplyDiscount(e.target.checked)}
                 className="accent-green-600 w-4 h-4"
               />
-              Discount: <span className="font-semibold text-green-600">−{ocrResult.detectedDiscount?.toFixed(2)}</span>
+              Discount: <span className="font-semibold text-green-600">−{formatAmount(ocrResult.detectedDiscount!, currency)}</span>
             </label>
-          )}
-          {hasTax && hasDiscount && (
-            <p className="text-xs text-slate-500 ml-6">
-              Net applied: <span className="font-semibold text-slate-700 dark:text-slate-300">{netTax.toFixed(2)}</span>
-            </p>
           )}
           {hasTip && (
             <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
@@ -184,7 +175,7 @@ export function OcrResultPreview({ billId, onDone }: OcrResultPreviewProps) {
                 onChange={(e) => setApplyTip(e.target.checked)}
                 className="accent-blue-600 w-4 h-4"
               />
-              Tip / gratuity: <span className="font-semibold">+{ocrResult.detectedTip?.toFixed(2)}</span>
+              Tip / gratuity: <span className="font-semibold">+{formatAmount(ocrResult.detectedTip!, currency)}</span>
             </label>
           )}
         </div>

@@ -78,6 +78,10 @@ export class SupabaseBillRepository implements IBillRepository {
       billRow.tax !== null && billRow.tax !== undefined
         ? createMoney(Number(billRow.tax), billRow.currency)
         : null;
+    const discount =
+      billRow.discount !== null && billRow.discount !== undefined
+        ? createMoney(Number(billRow.discount), billRow.currency)
+        : null;
     const tip =
       billRow.tip !== null && billRow.tip !== undefined
         ? createMoney(Number(billRow.tip), billRow.currency)
@@ -86,6 +90,7 @@ export class SupabaseBillRepository implements IBillRepository {
       items,
       billRow.currency,
       tax,
+      discount,
       tip
     );
 
@@ -98,6 +103,7 @@ export class SupabaseBillRepository implements IBillRepository {
       assignments,
       subtotal,
       tax,
+      discount,
       tip,
       total,
       status: billRow.status as BillStatus,
@@ -126,6 +132,7 @@ export class SupabaseBillRepository implements IBillRepository {
       status: bill.status,
       paid_by_participant_id: bill.paidByParticipantId ?? null,
       tax: bill.tax?.amount ?? null,
+      discount: bill.discount?.amount ?? null,
       tip: bill.tip?.amount ?? null,
       created_at: bill.createdAt.toISOString(),
       updated_at: bill.updatedAt.toISOString(),
