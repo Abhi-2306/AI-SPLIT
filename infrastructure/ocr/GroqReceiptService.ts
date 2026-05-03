@@ -155,8 +155,9 @@ export class GroqReceiptService implements IReceiptExtractorService {
     try {
       // pdf-parse is a pure Node.js library — works in all serverless environments
       // (no browser globals like DOMMatrix required, unlike pdfjs-dist).
+      // pdf-parse v1.x — pure Node.js, no browser globals required
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
+      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require("pdf-parse");
       const data = await pdfParse(buffer);
       const extractedText = data.text;
 
