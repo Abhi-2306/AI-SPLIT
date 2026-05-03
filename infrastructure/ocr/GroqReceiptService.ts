@@ -153,29 +153,12 @@ export class GroqReceiptService implements IReceiptExtractorService {
     };
 
     try {
-      // Use pdfjs-dist directly — works reliably with Buffer input.
-      // pdfjs-dist v5 requires a real workerSrc even in Node.js environments.
-      // We point it to the worker file in node_modules via a file:// URL.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs") as any;
-      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        const { resolve } = await import("path");
-        const { pathToFileURL } = await import("url");
-        const workerPath = resolve(
-          process.cwd(),
-          "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"
-        );
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
-      }
-      const uint8 = new Uint8Array(buffer);
-      const doc = await pdfjsLib.getDocument({ data: uint8 }).promise;
-      let extractedText = "";
-      for (let i = 1; i <= doc.numPages; i++) {
-        const page = await doc.getPage(i);
-        const content = await page.getTextContent();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        extractedText += content.items.map((item: any) => item.str ?? "").join(" ") + "\n";
-      }
+      // pdf-parse is a pure Node.js library — works in all serverless environments
+      // (no browser globals like DOMMatrix required, unlike pdfjs-dist).
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
+      const data = await pdfParse(buffer);
+      const extractedText = data.text;
 
       if (!extractedText.trim()) {
         console.warn("[GroqReceiptService] PDF produced no extractable text.");
